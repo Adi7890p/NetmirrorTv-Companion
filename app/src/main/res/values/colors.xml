@@ -1,11 +1,17 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="dark_bg">#121212</color>
-    <color name="card_bg">#1E1E1E</color>
+    <color name="dark_bg">#0F1014</color>
+    <color name="card_bg">#161922</color>
+    <color name="digit_box_bg">#1A1F2C</color>
+    <color name="digit_box_border">#2E384D</color>
     <color name="accent_primary">#E50914</color>
-    <color name="accent_green">#4CAF50</color>
+    <color name="accent_primary_dark">#B80710</color>
+    <color name="accent_cyan">#00E5FF</color>
+    <color name="accent_green">#00E676</color>
     <color name="text_primary">#FFFFFF</color>
-    <color name="text_secondary">#B3B3B3</color>
-    <color name="border_color">#2E2E2E</color>
+    <color name="text_secondary">#9E9EA7</color>
+    <color name="text_muted">#6B7280</color>
+    <color name="border_color">#262B36</color>
+    <color name="focus_highlight">#FF4D58</color>
 </resources>

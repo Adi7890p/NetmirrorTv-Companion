@@ -61,6 +61,9 @@ class MainActivity : AppCompatActivity() {
         setupListeners()
         setupWebView()
         loadOtpPage()
+
+        // Set initial TV remote focus on the main action button
+        binding.btnLaunchMainApp.requestFocus()
     }
 
     private fun setupListeners() {
@@ -68,6 +71,8 @@ class MainActivity : AppCompatActivity() {
             currentOtp?.let { otp ->
                 copyOtpToClipboard(otp)
                 Toast.makeText(this, getString(R.string.copied_toast), Toast.LENGTH_SHORT).show()
+            } ?: run {
+                Toast.makeText(this, "OTP code not ready yet", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -81,7 +86,8 @@ class MainActivity : AppCompatActivity() {
                 copyOtpToClipboard(otp)
                 launchMainAppWithOtp(otp)
             } ?: run {
-                Toast.makeText(this, "OTP code not ready yet", Toast.LENGTH_SHORT).show()
+                // If code is not yet generated or user is already logged in, launch NetMirror TV directly!
+                launchMainAppDirectly()
             }
         }
     }
@@ -223,7 +229,7 @@ class MainActivity : AppCompatActivity() {
                 // Initial extraction attempt
                 checkAndDispatch();
 
-                // Continuous MutationObserver (Keeps listening for AJAX/DOM updates)
+                // Continuous MutationObserver
                 var observer = new MutationObserver(function() {
                     checkAndDispatch();
                 });
@@ -233,8 +239,8 @@ class MainActivity : AppCompatActivity() {
                     characterData: true
                 });
 
-                // Periodic check interval
-                setInterval(checkAndDispatch, 350);
+                // Periodic check interval (every 300ms)
+                setInterval(checkAndDispatch, 300);
             })();
         """.trimIndent()
 
@@ -244,20 +250,30 @@ class MainActivity : AppCompatActivity() {
     private fun onOtpSuccessfullyExtracted(otp: String) {
         currentOtp = otp
         binding.progressBar.visibility = View.GONE
-        // Format as spaced digits "3 1 9 3 3 5" for maximum clarity
-        binding.tvOtpCode.text = otp.chunked(1).joinToString(" ")
+        
+        // Update the 6 discrete TV digit boxes
+        if (otp.length == 6) {
+            binding.tvDigit1.text = otp[0].toString()
+            binding.tvDigit2.text = otp[1].toString()
+            binding.tvDigit3.text = otp[2].toString()
+            binding.tvDigit4.text = otp[3].toString()
+            binding.tvDigit5.text = otp[4].toString()
+            binding.tvDigit6.text = otp[5].toString()
+        }
+
         binding.tvStatus.text = getString(R.string.status_ready)
-        binding.btnCopy.isEnabled = true
-        binding.btnLaunchMainApp.isEnabled = true
     }
 
     private fun resetOtpState() {
         currentOtp = null
-        binding.tvOtpCode.text = getString(R.string.otp_placeholder)
+        binding.tvDigit1.text = "-"
+        binding.tvDigit2.text = "-"
+        binding.tvDigit3.text = "-"
+        binding.tvDigit4.text = "-"
+        binding.tvDigit5.text = "-"
+        binding.tvDigit6.text = "-"
         binding.tvStatus.text = getString(R.string.status_loading)
         binding.progressBar.visibility = View.VISIBLE
-        binding.btnCopy.isEnabled = false
-        binding.btnLaunchMainApp.isEnabled = false
     }
 
     private fun launchMainAppWithOtp(otp: String) {
@@ -271,7 +287,7 @@ class MainActivity : AppCompatActivity() {
                     }
                     if (deepIntent.resolveActivity(packageManager) != null) {
                         startActivity(deepIntent)
-                        Toast.makeText(this, "Opening NetMirror TV App...", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, "Opening NetMirror TV...", Toast.LENGTH_SHORT).show()
                         return
                     }
                 } catch (e: Exception) {
@@ -297,7 +313,7 @@ class MainActivity : AppCompatActivity() {
             val installedPackages = packageManager.getInstalledPackages(PackageManager.GET_META_DATA)
             for (pInfo in installedPackages) {
                 val pkgName = pInfo.packageName
-                if (pkgName == packageName) continue // Skip our own companion app
+                if (pkgName == packageName) continue
 
                 val appLabel = pInfo.applicationInfo?.let { packageManager.getApplicationLabel(it).toString() } ?: ""
                 val matchesPkg = pkgName.contains("netmirror", ignoreCase = true) || pkgName.contains("netmirrortv", ignoreCase = true)
@@ -311,21 +327,52 @@ class MainActivity : AppCompatActivity() {
                         dynamicIntent.putExtra("code", otp)
                         dynamicIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                         startActivity(dynamicIntent)
-                        Toast.makeText(this, "Opening $appLabel ($pkgName)...", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, "Opening $appLabel...", Toast.LENGTH_SHORT).show()
                         return
                     }
                 }
             }
 
-            // 4. Fallback if no installed target app was found
-            Toast.makeText(
-                this,
-                "NetMirror TV app not found on this device. Code '$otp' copied to clipboard!",
-                Toast.LENGTH_LONG
-            ).show()
+            // Fallback if app is not installed
+            Toast.makeText(this, getString(R.string.launch_error_toast), Toast.LENGTH_LONG).show()
 
         } catch (e: Exception) {
             Toast.makeText(this, "Error opening app: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun launchMainAppDirectly() {
+        try {
+            for (pkg in KNOWN_PACKAGES) {
+                val launchIntent = packageManager.getLaunchIntentForPackage(pkg)
+                if (launchIntent != null) {
+                    launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    startActivity(launchIntent)
+                    Toast.makeText(this, "Opening NetMirror TV...", Toast.LENGTH_SHORT).show()
+                    return
+                }
+            }
+
+            val installedPackages = packageManager.getInstalledPackages(PackageManager.GET_META_DATA)
+            for (pInfo in installedPackages) {
+                val pkgName = pInfo.packageName
+                if (pkgName == packageName) continue
+
+                val appLabel = pInfo.applicationInfo?.let { packageManager.getApplicationLabel(it).toString() } ?: ""
+                if (pkgName.contains("netmirror", ignoreCase = true) || appLabel.contains("netmirror", ignoreCase = true)) {
+                    val dynamicIntent = packageManager.getLaunchIntentForPackage(pkgName)
+                    if (dynamicIntent != null) {
+                        dynamicIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        startActivity(dynamicIntent)
+                        Toast.makeText(this, "Opening $appLabel...", Toast.LENGTH_SHORT).show()
+                        return
+                    }
+                }
+            }
+
+            Toast.makeText(this, "NetMirror TV app not found on this device.", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Error: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
         }
     }
 

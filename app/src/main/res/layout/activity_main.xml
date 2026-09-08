@@ -1,79 +1,183 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/dark_bg"
-    android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="20dp">
 
-    <!-- Header / Title -->
-    <TextView
-        android:id="@+id/tvHeader"
+    <!-- Header / Brand Section -->
+    <LinearLayout
+        android:id="@+id/headerLayout"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/app_name"
-        android:textColor="@color/text_primary"
-        android:textSize="22sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="12dp"/>
+        android:gravity="center"
+        android:orientation="vertical"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
 
-    <!-- OTP Display Card -->
+        <ImageView
+            android:id="@+id/ivLogo"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:contentDescription="@string/app_name"
+            android:src="@drawable/ic_launcher" />
+
+        <TextView
+            android:id="@+id/tvAppTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="@string/app_name"
+            android:textColor="@color/text_primary"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvSubHeader"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="@string/tv_instruction"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <!-- Center Card with 6-Digit OTP Boxes -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/cardOtp"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
         app:cardBackgroundColor="@color/card_bg"
-        app:cardCornerRadius="12dp"
-        app:cardElevation="4dp"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="6dp"
+        app:layout_constraintBottom_toTopOf="@+id/btnLaunchMainApp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/headerLayout"
         app:strokeColor="@color/border_color"
-        app:strokeWidth="1dp">
+        app:strokeWidth="1.5dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
             android:orientation="vertical"
-            android:padding="20dp">
+            android:paddingStart="16dp"
+            android:paddingTop="18dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="18dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:letterSpacing="0.1"
                 android:text="@string/otp_label"
                 android:textColor="@color/text_secondary"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:textStyle="bold" />
 
-            <!-- 6-digit OTP Display -->
-            <TextView
-                android:id="@+id/tvOtpCode"
+            <!-- 6 Discrete TV OTP Digit Boxes -->
+            <LinearLayout
+                android:id="@+id/layoutDigits"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:layout_marginBottom="8dp"
-                android:letterSpacing="0.2"
-                android:text="@string/otp_placeholder"
-                android:textColor="@color/accent_green"
-                android:textSize="38sp"
-                android:textStyle="bold"
-                tools:text="118453" />
+                android:layout_marginTop="14dp"
+                android:layout_marginBottom="12dp"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tvDigit1"
+                    android:layout_width="44dp"
+                    android:layout_height="56dp"
+                    android:layout_margin="3dp"
+                    android:background="@drawable/bg_digit_box"
+                    android:gravity="center"
+                    android:text="-"
+                    android:textColor="@color/accent_cyan"
+                    android:textSize="28sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvDigit2"
+                    android:layout_width="44dp"
+                    android:layout_height="56dp"
+                    android:layout_margin="3dp"
+                    android:background="@drawable/bg_digit_box"
+                    android:gravity="center"
+                    android:text="-"
+                    android:textColor="@color/accent_cyan"
+                    android:textSize="28sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvDigit3"
+                    android:layout_width="44dp"
+                    android:layout_height="56dp"
+                    android:layout_margin="3dp"
+                    android:background="@drawable/bg_digit_box"
+                    android:gravity="center"
+                    android:text="-"
+                    android:textColor="@color/accent_cyan"
+                    android:textSize="28sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvDigit4"
+                    android:layout_width="44dp"
+                    android:layout_height="56dp"
+                    android:layout_margin="3dp"
+                    android:background="@drawable/bg_digit_box"
+                    android:gravity="center"
+                    android:text="-"
+                    android:textColor="@color/accent_cyan"
+                    android:textSize="28sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvDigit5"
+                    android:layout_width="44dp"
+                    android:layout_height="56dp"
+                    android:layout_margin="3dp"
+                    android:background="@drawable/bg_digit_box"
+                    android:gravity="center"
+                    android:text="-"
+                    android:textColor="@color/accent_cyan"
+                    android:textSize="28sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvDigit6"
+                    android:layout_width="44dp"
+                    android:layout_height="56dp"
+                    android:layout_margin="3dp"
+                    android:background="@drawable/bg_digit_box"
+                    android:gravity="center"
+                    android:text="-"
+                    android:textColor="@color/accent_cyan"
+                    android:textSize="28sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
 
             <!-- Status Indicator -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
+                android:gravity="center"
                 android:orientation="horizontal">
 
                 <ProgressBar
                     android:id="@+id/progressBar"
                     style="?android:attr/progressBarStyleSmall"
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
                     android:layout_marginEnd="8dp"
-                    android:indeterminateTint="@color/accent_primary" />
+                    android:indeterminateTint="@color/accent_cyan" />
 
                 <TextView
                     android:id="@+id/tvStatus"
@@ -84,78 +188,90 @@
                     android:textSize="13sp" />
             </LinearLayout>
 
-            <!-- Action Buttons Row -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:orientation="horizontal"
-                android:weightSum="2">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnCopy"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="6dp"
-                    android:layout_weight="1"
-                    android:enabled="false"
-                    android:text="@string/btn_copy"
-                    android:textColor="@color/text_primary"
-                    app:strokeColor="@color/border_color" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnRefresh"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="6dp"
-                    android:layout_weight="1"
-                    android:text="@string/btn_refresh"
-                    android:textColor="@color/text_primary"
-                    app:strokeColor="@color/border_color" />
-            </LinearLayout>
-
-            <!-- Launch Main App Button -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnLaunchMainApp"
-                style="@style/Widget.MaterialComponents.Button"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:backgroundTint="@color/accent_primary"
-                android:enabled="false"
-                android:text="@string/btn_launch_app"
-                android:textColor="@color/white"
-                android:textStyle="bold" />
-
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- WebView Section Header -->
+    <!-- Primary Launch Action Button (Large Red TV Focusable) -->
+    <Button
+        android:id="@+id/btnLaunchMainApp"
+        android:layout_width="0dp"
+        android:layout_height="52dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="10dp"
+        android:background="@drawable/btn_primary_selector"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:text="@string/btn_launch_app"
+        android:textAllCaps="false"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/secondaryActionsLayout"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <!-- Secondary Actions Row (Copy & Refresh) -->
+    <LinearLayout
+        android:id="@+id/secondaryActionsLayout"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="12dp"
+        android:orientation="horizontal"
+        android:weightSum="2"
+        app:layout_constraintBottom_toTopOf="@+id/tvFooterHint"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <Button
+            android:id="@+id/btnCopy"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginEnd="6dp"
+            android:layout_weight="1"
+            android:background="@drawable/btn_secondary_selector"
+            android:focusable="true"
+            android:text="@string/btn_copy"
+            android:textAllCaps="false"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/btnRefresh"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="6dp"
+            android:layout_weight="1"
+            android:background="@drawable/btn_secondary_selector"
+            android:focusable="true"
+            android:text="@string/btn_refresh"
+            android:textAllCaps="false"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <!-- TV Footer Hint -->
     <TextView
+        android:id="@+id/tvFooterHint"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/title_webview"
-        android:textColor="@color/text_secondary"
-        android:textSize="12sp"
-        android:layout_marginBottom="6dp"/>
+        android:gravity="center"
+        android:text="@string/footer_hint"
+        android:textColor="@color/text_muted"
+        android:textSize="11sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
 
-    <!-- Embedded WebView Container -->
-    <com.google.android.material.card.MaterialCardView
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        app:cardBackgroundColor="@color/card_bg"
-        app:cardCornerRadius="10dp"
-        app:strokeColor="@color/border_color"
-        app:strokeWidth="1dp">
+    <!-- Background Headless WebView (Hidden from view so no scrolling exists) -->
+    <WebView
+        android:id="@+id/webView"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:visibility="invisible"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
 
-        <WebView
-            android:id="@+id/webView"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" />
-
-    </com.google.android.material.card.MaterialCardView>
-
-</LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

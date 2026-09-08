@@ -1,15 +1,16 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">NetMirror Companion</string>
-    <string name="otp_label">Current OTP Code</string>
+    <string name="tv_instruction">TV Companion &amp; Instant OTP Sync</string>
+    <string name="otp_label">YOUR 6-DIGIT OTP CODE</string>
     <string name="otp_placeholder">------</string>
-    <string name="status_loading">Connecting to netmirror.gg/tv...</string>
-    <string name="status_waiting_dom">Waiting for OTP digits to render...</string>
-    <string name="status_ready">OTP ready! You can copy or launch the app.</string>
-    <string name="status_error">Could not detect OTP. Tap refresh to retry.</string>
+    <string name="status_loading">Connecting &amp; generating code...</string>
+    <string name="status_waiting_dom">Retrieving live OTP digits...</string>
+    <string name="status_ready">OTP Ready! Tap below to open NetMirror TV</string>
+    <string name="status_error">Could not detect OTP. Tap Refresh to retry.</string>
     <string name="btn_copy">Copy Code</string>
     <string name="btn_launch_app">Open NetMirror TV App</string>
-    <string name="btn_refresh">Refresh Page</string>
+    <string name="btn_refresh">Refresh Code</string>
     <string name="copied_toast">OTP copied to clipboard!</string>
-    <string name="launch_error_toast">NetMirror app is not installed on this device.</string>
-    <string name="title_webview">Web View (Cloudflare / Live Page)</string>
+    <string name="launch_error_toast">NetMirror TV app not found on this device. Code copied to clipboard!</string>
+    <string name="footer_hint">When NetMirror TV opens, click 'Enter OTP' box and enter this code.</string>
 </resources>
