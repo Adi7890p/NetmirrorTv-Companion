@@ -25,9 +25,10 @@ jobs:
         gradle-version: '8.5'
 
     - name: Build Debug APK
-      run: gradle :app:assembleDebug --stacktrace
+      run: gradle :app:assembleDebug --stacktrace --info
 
     - name: Upload Debug APK
+      if: always()
       uses: actions/upload-artifact@v4
       with:
         name: NetMirror-Companion-APK
