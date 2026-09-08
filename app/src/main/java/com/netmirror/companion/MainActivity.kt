@@ -12,7 +12,6 @@ import android.os.Bundle
 import android.os.CountDownTimer
 import android.os.Handler
 import android.os.Looper
-import android.provider.Settings
 import android.util.Log
 import android.view.View
 import android.webkit.WebResourceError
@@ -102,18 +101,6 @@ class MainActivity : AppCompatActivity() {
                 countDownTimer?.cancel()
                 binding.btnPause.text = "Resume"
                 binding.tvCountdown.text = "Auto-launch paused"
-            }
-        }
-
-        binding.tvAutoFillHint.setOnClickListener {
-            if (!AutoFillManager.isAccessibilityServiceEnabled(this)) {
-                try {
-                    val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                    startActivity(intent)
-                    Toast.makeText(this, "Enable 'NetMirror Companion' for auto-typing OTP!", Toast.LENGTH_LONG).show()
-                } catch (e: Exception) {
-                    Log.e(TAG, "Cannot open accessibility settings", e)
-                }
             }
         }
     }
@@ -275,14 +262,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun onOtpSuccessfullyExtracted(otp: String) {
         currentOtp = otp
-        AutoFillManager.activeOtp = otp
-        AutoFillManager.autoFillCompleted = false
-
         binding.progressBar.visibility = View.GONE
         binding.tvOtpCode.text = otp.chunked(1).joinToString(" ")
         binding.tvStatus.text = getString(R.string.status_ready)
 
-        // Show overlay with animation
+        // Show floating countdown overlay with smooth fade-in
         binding.cardOtpOverlay.visibility = View.VISIBLE
         binding.cardOtpOverlay.alpha = 0f
         binding.cardOtpOverlay.animate().alpha(1f).setDuration(300).start()
@@ -318,8 +302,6 @@ class MainActivity : AppCompatActivity() {
     private fun resetOtpState() {
         countDownTimer?.cancel()
         currentOtp = null
-        AutoFillManager.activeOtp = null
-        AutoFillManager.autoFillCompleted = false
         binding.cardOtpOverlay.visibility = View.GONE
         binding.tvOtpCode.text = getString(R.string.otp_placeholder)
         binding.tvStatus.text = getString(R.string.status_loading)
@@ -359,31 +341,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            // 3. Dynamically search all installed packages for any matching "netmirror"
-            val installedPackages = packageManager.getInstalledPackages(PackageManager.GET_META_DATA)
-            for (pInfo in installedPackages) {
-                val pkgName = pInfo.packageName
-                if (pkgName == packageName) continue
-
-                val appLabel = pInfo.applicationInfo?.let { packageManager.getApplicationLabel(it).toString() } ?: ""
-                val matchesPkg = pkgName.contains("netmirror", ignoreCase = true) || pkgName.contains("netmirrortv", ignoreCase = true)
-                val matchesLabel = appLabel.contains("netmirror", ignoreCase = true) || appLabel.contains("netmirrortv", ignoreCase = true)
-
-                if (matchesPkg || matchesLabel) {
-                    val dynamicIntent = packageManager.getLaunchIntentForPackage(pkgName)
-                    if (dynamicIntent != null) {
-                        dynamicIntent.putExtra("otp_code", otp)
-                        dynamicIntent.putExtra("otp", otp)
-                        dynamicIntent.putExtra("code", otp)
-                        dynamicIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        startActivity(dynamicIntent)
-                        Toast.makeText(this, "Opening $appLabel...", Toast.LENGTH_SHORT).show()
-                        return
-                    }
-                }
-            }
-
-            // Fallback if app is not installed
+            // 3. Fallback if app is not installed
             Toast.makeText(this, getString(R.string.launch_error_toast), Toast.LENGTH_LONG).show()
 
         } catch (e: Exception) {
@@ -400,23 +358,6 @@ class MainActivity : AppCompatActivity() {
                     startActivity(launchIntent)
                     Toast.makeText(this, "Opening NetMirror TV...", Toast.LENGTH_SHORT).show()
                     return
-                }
-            }
-
-            val installedPackages = packageManager.getInstalledPackages(PackageManager.GET_META_DATA)
-            for (pInfo in installedPackages) {
-                val pkgName = pInfo.packageName
-                if (pkgName == packageName) continue
-
-                val appLabel = pInfo.applicationInfo?.let { packageManager.getApplicationLabel(it).toString() } ?: ""
-                if (pkgName.contains("netmirror", ignoreCase = true) || appLabel.contains("netmirror", ignoreCase = true)) {
-                    val dynamicIntent = packageManager.getLaunchIntentForPackage(pkgName)
-                    if (dynamicIntent != null) {
-                        dynamicIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        startActivity(dynamicIntent)
-                        Toast.makeText(this, "Opening $appLabel...", Toast.LENGTH_SHORT).show()
-                        return
-                    }
                 }
             }
 

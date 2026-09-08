@@ -1,15 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
     package="com.netmirror.companion">
 
-    <!-- Internet & Network State Permissions -->
+    <!-- Safe Standard Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!-- Allow finding installed NetMirror TV app packages on Android 11+ -->
-    <uses-permission
-        android:name="android.permission.QUERY_ALL_PACKAGES"
-        tools:ignore="QueryAllPackagesCondition" />
 
     <!-- Allow installing on all Android devices (Phones, Tablets, Android TV, Fire TV) -->
     <uses-feature
@@ -19,7 +14,7 @@
         android:name="android.software.leanback"
         android:required="false" />
 
-    <!-- Queries for launching main app via deep link or package name -->
+    <!-- Standard Compliant Queries for launching main app via deep link or package name -->
     <queries>
         <package android:name="com.netmirrortv" />
         <package android:name="com.netmirror.tv" />
@@ -60,19 +55,6 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <!-- Optional Accessibility Auto-Fill Service -->
-        <service
-            android:name="com.netmirror.companion.NetMirrorAutoFillService"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.accessibilityservice"
-                android:resource="@xml/accessibility_service_config" />
-        </service>
     </application>
 
 </manifest>
