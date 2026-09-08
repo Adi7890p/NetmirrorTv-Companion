@@ -1,5 +1,5 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <string name="app_name">NetMirror Companion</string>
+    <string name="app_name">NetMirror Companion by AK</string>
     <string name="tv_instruction">TV Companion &amp; Instant OTP Sync</string>
     <string name="otp_label">Current OTP Code</string>
     <string name="otp_placeholder">------</string>
