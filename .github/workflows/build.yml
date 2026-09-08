@@ -25,7 +25,15 @@ jobs:
         gradle-version: '8.5'
 
     - name: Build Debug APK
-      run: gradle assembleDebug --stacktrace --no-daemon
+      run: |
+        gradle assembleDebug --stacktrace 2>&1 | tee build_output.log
+
+    - name: Upload Build Log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: Build-Console-Log
+        path: build_output.log
 
     - name: Upload Debug APK
       if: success()
