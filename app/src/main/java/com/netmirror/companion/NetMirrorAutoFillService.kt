@@ -36,7 +36,8 @@ object AutoFillManager {
         while (colonSplitter.hasNext()) {
             val componentName = colonSplitter.next()
             if (componentName.equals(expectedServiceName, ignoreCase = true) ||
-                componentName.contains("NetMirrorAutoFillService", ignoreCase = true)
+                componentName.contains("NetMirrorAutoFillService", ignoreCase = true) ||
+                componentName.contains(context.packageName, ignoreCase = true)
             ) {
                 return true
             }
@@ -46,8 +47,8 @@ object AutoFillManager {
 }
 
 /**
- * Custom Visual Highlighter View drawn on top of the target app
- * showing exactly where the auto-clicker tapped.
+ * Custom Visual Highlighter View drawn on top of the screen
+ * showing a pulsing animated neon crosshair and ripple where the click happened.
  */
 class ClickHighlighterView(
     context: Context,
@@ -90,7 +91,7 @@ class ClickHighlighterView(
 
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
-        textSize = 32f
+        textSize = 34f
         typeface = Typeface.DEFAULT_BOLD
     }
 
@@ -99,8 +100,8 @@ class ClickHighlighterView(
     }
 
     private fun startRippleAnimation() {
-        animator = ValueAnimator.ofFloat(20f, 90f).apply {
-            duration = 900
+        animator = ValueAnimator.ofFloat(20f, 95f).apply {
+            duration = 800
             repeatCount = ValueAnimator.INFINITE
             repeatMode = ValueAnimator.RESTART
             interpolator = DecelerateInterpolator()
@@ -117,46 +118,45 @@ class ClickHighlighterView(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        // 1. Draw Expanding Animated Ripple Ring
+        // 1. Expanding Animated Ripple Ring
         outerRingPaint.alpha = rippleAlpha
         canvas.drawCircle(clickX, clickY, rippleRadius, outerRingPaint)
 
-        // 2. Draw Static Outer Guide Ring
-        outerRingPaint.alpha = 200
-        canvas.drawCircle(clickX, clickY, 32f, outerRingPaint)
+        // 2. Static Outer Guide Ring
+        outerRingPaint.alpha = 220
+        canvas.drawCircle(clickX, clickY, 34f, outerRingPaint)
 
-        // 3. Draw Center Touch Target Dot
+        // 3. Center Touch Target Dot
         canvas.drawCircle(clickX, clickY, 14f, innerDotPaint)
 
-        // 4. Draw Crosshairs
+        // 4. Crosshairs
         val crossLength = 45f
         canvas.drawLine(clickX - crossLength, clickY, clickX - 18f, clickY, crosshairPaint)
         canvas.drawLine(clickX + 18f, clickY, clickX + crossLength, clickY, crosshairPaint)
         canvas.drawLine(clickX, clickY - crossLength, clickX, clickY - 18f, crosshairPaint)
         canvas.drawLine(clickX, clickY + 18f, clickX, clickY + crossLength, crosshairPaint)
 
-        // 5. Draw Info Badge Tooltip
+        // 5. Tooltip Badge
         val labelText = infoLabel
         val textWidth = textPaint.measureText(labelText)
-        val badgePadding = 20f
-        val badgeHeight = 54f
+        val badgePadding = 24f
+        val badgeHeight = 58f
         val badgeWidth = textWidth + (badgePadding * 2)
 
         var badgeLeft = clickX - (badgeWidth / 2f)
-        var badgeTop = clickY - 100f
+        var badgeTop = clickY - 110f
 
-        // Screen boundary safety
+        // Boundary safety
         if (badgeLeft < 20f) badgeLeft = 20f
         if (badgeLeft + badgeWidth > width - 20f) badgeLeft = (width - badgeWidth - 20f)
         if (badgeTop < 60f) badgeTop = clickY + 50f
 
         val badgeRect = RectF(badgeLeft, badgeTop, badgeLeft + badgeWidth, badgeTop + badgeHeight)
-        canvas.drawRoundRect(badgeRect, 14f, 14f, badgeBgPaint)
-        canvas.drawRoundRect(badgeRect, 14f, 14f, badgeBorderPaint)
+        canvas.drawRoundRect(badgeRect, 16f, 16f, badgeBgPaint)
+        canvas.drawRoundRect(badgeRect, 16f, 16f, badgeBorderPaint)
 
-        // Center text in badge
         val textX = badgeLeft + badgePadding
-        val textY = badgeTop + 38f
+        val textY = badgeTop + 40f
         canvas.drawText(labelText, textX, textY, textPaint)
     }
 
@@ -174,12 +174,25 @@ class NetMirrorAutoFillService : AccessibilityService() {
 
     companion object {
         private const val TAG = "NetMirrorAutoFill"
+        var instance: NetMirrorAutoFillService? = null
+
+        fun startDirectAutoFill(otp: String) {
+            val service = instance
+            if (service != null) {
+                Log.d(TAG, "Direct auto-fill triggered with OTP: $otp")
+                service.scheduleAutoFillSequence(otp, delayMs = 4500L)
+            } else {
+                Log.w(TAG, "Service instance is null. Is Accessibility enabled in Android Settings?")
+            }
+        }
     }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        instance = this
         windowManager = getSystemService(Context.WINDOW_SERVICE) as? WindowManager
-        Log.d(TAG, "NetMirrorAutoFillService connected and active")
+        Log.d(TAG, "NetMirrorAutoFillService connected!")
+        showToast("✅ NetMirror Auto-Clicker Service Active!")
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -196,13 +209,6 @@ class NetMirrorAutoFillService : AccessibilityService() {
         }
 
         val packageNameStr = event.packageName?.toString() ?: ""
-        // Check if event is from NetMirror or TV app
-        if (!packageNameStr.contains("netmirror", ignoreCase = true) &&
-            !packageNameStr.contains("companion", ignoreCase = true)
-        ) {
-            return
-        }
-
         if (packageNameStr == packageName) {
             // Ignore events from our own companion app
             return
@@ -210,10 +216,18 @@ class NetMirrorAutoFillService : AccessibilityService() {
 
         if (!isSearching) {
             isSearching = true
-            showToast("📺 NetMirror TV detected! Scanning for OTP box...")
-            Log.d(TAG, "NetMirror TV window detected ($packageNameStr). Starting auto-click sequence...")
+            Log.d(TAG, "Foreground app change detected ($packageNameStr). Starting scan sequence...")
+            showToast("📺 NetMirror detected! Scanning for OTP box...")
             attemptAutoFillWithRetries(otp, attemptsLeft = 25)
         }
+    }
+
+    fun scheduleAutoFillSequence(otp: String, delayMs: Long) {
+        showToast("⏳ Waiting 4s for NetMirror animation to load...")
+        handler.postDelayed({
+            isSearching = true
+            attemptAutoFillWithRetries(otp, attemptsLeft = 25)
+        }, delayMs)
     }
 
     private fun attemptAutoFillWithRetries(otp: String, attemptsLeft: Int) {
@@ -245,10 +259,10 @@ class NetMirrorAutoFillService : AccessibilityService() {
                     clickY = dm.heightPixels * 0.44f
                 }
 
-                Log.d(TAG, "Target node found! Coordinates: ($clickX, $clickY). Triggering visual highlight & click...")
+                Log.d(TAG, "Target node found at ($clickX, $clickY)! Showing highlight and clicking...")
 
                 // 1. Show Visual Highlight on Screen & Toast Message
-                showClickHighlight(clickX, clickY, "🎯 Tapped OTP Box ($otp)")
+                showClickHighlight(clickX, clickY, "🎯 Clicked OTP Box ($otp)")
                 showToast("🎯 Clicked OTP Box at (${clickX.toInt()}, ${clickY.toInt()})")
 
                 // 2. Perform Accessibility Actions
@@ -259,7 +273,7 @@ class NetMirrorAutoFillService : AccessibilityService() {
                 // 3. Dispatch Physical Touch Gesture
                 dispatchTapAt(clickX, clickY)
 
-                // 4. Fill OTP after delay
+                // 4. Fill OTP after gesture registers
                 handler.postDelayed({
                     val args = Bundle().apply {
                         putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, otp)
@@ -281,14 +295,13 @@ class NetMirrorAutoFillService : AccessibilityService() {
                 }, 400)
                 return
             } else if (attemptsLeft == 12) {
-                // If node is not found directly after several attempts (e.g. custom canvas / React Native view),
-                // use calculated TV screen center coordinates
+                // Smart fallback click at center coordinates (typical TV layout)
                 val dm = resources.displayMetrics
                 val clickX = dm.widthPixels / 2f
                 val clickY = dm.heightPixels * 0.44f
 
-                Log.d(TAG, "Fallback click triggered at screen center ($clickX, $clickY)")
-                showClickHighlight(clickX, clickY, "🎯 Tapped OTP Area ($otp)")
+                Log.d(TAG, "Smart fallback click triggered at ($clickX, $clickY)")
+                showClickHighlight(clickX, clickY, "🎯 Clicked OTP Box ($otp)")
                 showToast("🎯 Auto-Clicking OTP Box at (${clickX.toInt()}, ${clickY.toInt()})")
                 dispatchTapAt(clickX, clickY)
 
@@ -303,7 +316,7 @@ class NetMirrorAutoFillService : AccessibilityService() {
                     AutoFillManager.autoFillCompleted = true
                     AutoFillManager.lastFilledOtp = otp
                     isSearching = false
-                    showToast("✅ OTP ($otp) Auto-Filled!")
+                    showToast("✅ OTP ($otp) Entered Successfully!")
                 }, 400)
                 return
             }
@@ -342,10 +355,10 @@ class NetMirrorAutoFillService : AccessibilityService() {
 
                     wm.addView(overlay, params)
 
-                    // Auto-remove after 2.5 seconds
+                    // Auto-remove after 3 seconds
                     handler.postDelayed({
                         removeExistingHighlight()
-                    }, 2500)
+                    }, 3000)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to show click highlight overlay: ${e.message}", e)
@@ -411,7 +424,6 @@ class NetMirrorAutoFillService : AccessibilityService() {
             return node
         }
 
-        // Inspect children recursively
         for (i in 0 until node.childCount) {
             val child = node.getChild(i) ?: continue
             val found = findOtpInputNode(child)
@@ -439,6 +451,7 @@ class NetMirrorAutoFillService : AccessibilityService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        if (instance == this) instance = null
         removeExistingHighlight()
     }
 }

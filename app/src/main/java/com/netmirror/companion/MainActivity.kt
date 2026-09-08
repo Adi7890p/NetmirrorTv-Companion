@@ -70,12 +70,17 @@ class MainActivity : AppCompatActivity() {
         checkAccessibilityStatus()
     }
 
+    override fun onResume() {
+        super.onResume()
+        checkAccessibilityStatus()
+    }
+
     private fun checkAccessibilityStatus() {
         if (!AutoFillManager.isAccessibilityServiceEnabled(this)) {
-            binding.tvAutoFillHint.text = "⚠️ Auto-Typing is OFF. Tap here to enable in Accessibility Settings."
+            binding.tvAutoFillHint.text = "⚠️ Auto-Click is OFF. Tap here to enable in Accessibility Settings."
             binding.tvAutoFillHint.setTextColor(getColor(R.color.accent_cyan))
         } else {
-            binding.tvAutoFillHint.text = "✅ Auto-Clicking & Auto-Typing is active."
+            binding.tvAutoFillHint.text = "✅ Auto-Clicking, Highlights & Auto-Typing is active."
             binding.tvAutoFillHint.setTextColor(getColor(R.color.accent_green))
         }
     }
@@ -339,6 +344,17 @@ class MainActivity : AppCompatActivity() {
         try {
             AutoFillManager.activeOtp = otp
             AutoFillManager.autoFillCompleted = false
+
+            // Trigger accessibility auto-click & highlight sequence
+            NetMirrorAutoFillService.startDirectAutoFill(otp)
+
+            if (!AutoFillManager.isAccessibilityServiceEnabled(this)) {
+                Toast.makeText(
+                    this,
+                    "⚠️ Please turn ON 'NetMirror Companion' in Accessibility Settings for Auto-Click & Highlights!",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
 
             // 1. Try known package names directly
             for (pkg in KNOWN_PACKAGES) {
