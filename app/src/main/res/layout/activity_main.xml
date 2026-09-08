@@ -93,13 +93,13 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- 3. Floating Animated Countdown & Auto-Launch Card (Appears when OTP is detected) -->
+    <!-- 3. Floating OTP Result Card (Appears when OTP is detected) -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/cardOtpOverlay"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:layout_margin="14dp"
+        android:layout_margin="16dp"
         android:visibility="gone"
         app:cardBackgroundColor="#F2161922"
         app:cardCornerRadius="18dp"
@@ -113,117 +113,74 @@
             android:layout_height="wrap_content"
             android:gravity="center"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:padding="20dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:letterSpacing="0.1"
-                android:text="6-DIGIT OTP GENERATED"
+                android:text="YOUR NETMIRROR TV OTP"
                 android:textColor="@color/text_secondary"
                 android:textSize="12sp"
                 android:textStyle="bold" />
 
-            <!-- Glowing Big OTP Code -->
+            <!-- Glowing Big 6-Digit OTP Code -->
             <TextView
                 android:id="@+id/tvOtpCode"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:layout_marginBottom="6dp"
-                android:letterSpacing="0.25"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="4dp"
+                android:letterSpacing="0.3"
+                android:textIsSelectable="true"
                 android:text="@string/otp_placeholder"
                 android:textColor="@color/accent_green"
-                android:textSize="38sp"
+                android:textSize="40sp"
                 android:textStyle="bold"
                 tools:text="3 1 9 3 3 5" />
 
-            <!-- Animated 5-Second Countdown Indicator -->
-            <LinearLayout
-                android:layout_width="match_parent"
+            <TextView
+                android:id="@+id/tvOtpSubtext"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:gravity="center"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/tvCountdown"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Launching NetMirror TV in 5 seconds..."
-                    android:textColor="@color/accent_cyan"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
-
-                <ProgressBar
-                    android:id="@+id/pbCountdown"
-                    style="?android:attr/progressBarStyleHorizontal"
-                    android:layout_width="match_parent"
-                    android:layout_height="6dp"
-                    android:layout_marginTop="8dp"
-                    android:layout_marginBottom="12dp"
-                    android:max="5000"
-                    android:progress="5000"
-                    android:progressTint="@color/accent_cyan" />
-            </LinearLayout>
+                android:layout_marginBottom="16dp"
+                android:text="✅ Copied to clipboard automatically"
+                android:textColor="@color/accent_cyan"
+                android:textSize="12sp" />
 
             <!-- Action Buttons Row -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:weightSum="3">
+                android:orientation="horizontal">
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnLaunchMainApp"
                     style="@style/Widget.MaterialComponents.Button"
                     android:layout_width="0dp"
-                    android:layout_height="46dp"
-                    android:layout_marginEnd="4dp"
-                    android:layout_weight="1.6"
+                    android:layout_height="52dp"
+                    android:layout_marginEnd="8dp"
+                    android:layout_weight="1"
                     android:backgroundTint="@color/accent_primary"
-                    android:text="Launch Now"
+                    android:text="📺 Open NetMirror TV"
                     android:textColor="@color/white"
-                    android:textSize="13sp"
+                    android:textSize="14sp"
                     android:textStyle="bold"
-                    app:cornerRadius="8dp" />
+                    app:cornerRadius="10dp" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnCopy"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="46dp"
-                    android:layout_marginHorizontal="2dp"
-                    android:layout_weight="0.8"
-                    android:text="Copy"
+                    android:layout_width="wrap_content"
+                    android:layout_height="52dp"
+                    android:paddingHorizontal="16dp"
+                    android:text="📋 Copy"
                     android:textColor="@color/text_primary"
-                    android:textSize="12sp"
-                    app:cornerRadius="8dp"
-                    app:strokeColor="@color/border_color" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnPause"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="46dp"
-                    android:layout_marginStart="4dp"
-                    android:layout_weight="0.6"
-                    android:text="Cancel"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="11sp"
-                    app:cornerRadius="8dp"
+                    android:textSize="13sp"
+                    app:cornerRadius="10dp"
                     app:strokeColor="@color/border_color" />
 
             </LinearLayout>
-
-            <TextView
-                android:id="@+id/tvAutoFillHint"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:gravity="center"
-                android:text="Will automatically click \'Enter OTP\' and fill the code in NetMirror TV."
-                android:textColor="@color/text_muted"
-                android:textSize="11sp" />
 
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>

@@ -5,14 +5,11 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
-import android.os.CountDownTimer
 import android.os.Handler
 import android.os.Looper
-import android.provider.Settings
 import android.util.Log
 import android.view.View
 import android.webkit.WebResourceError
@@ -28,15 +25,11 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private var currentOtp: String? = null
-    private var countDownTimer: CountDownTimer? = null
-    private var isPaused = false
     private val mainHandler = Handler(Looper.getMainLooper())
 
     companion object {
         private const val TAG = "NetMirrorCompanion"
         private const val OTP_TARGET_URL = "https://netmirror.gg/tv"
-        private const val COUNTDOWN_DURATION_MS = 4000L
-        private const val COUNTDOWN_INTERVAL_MS = 50L
 
         // Candidate package identifiers for NetMirror TV
         private val KNOWN_PACKAGES = listOf(
@@ -67,29 +60,13 @@ class MainActivity : AppCompatActivity() {
         setupListeners()
         setupWebView()
         loadOtpPage()
-        checkAccessibilityStatus()
-    }
-
-    override fun onResume() {
-        super.onResume()
-        checkAccessibilityStatus()
-    }
-
-    private fun checkAccessibilityStatus() {
-        if (!AutoFillManager.isAccessibilityServiceEnabled(this)) {
-            binding.tvAutoFillHint.text = "⚠️ Auto-Click is OFF. Tap here to enable in Accessibility Settings."
-            binding.tvAutoFillHint.setTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.accent_cyan))
-        } else {
-            binding.tvAutoFillHint.text = "✅ Auto-Clicking, Highlights & Auto-Typing is active."
-            binding.tvAutoFillHint.setTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.accent_green))
-        }
     }
 
     private fun setupListeners() {
         binding.btnCopy.setOnClickListener {
             currentOtp?.let { otp ->
                 copyOtpToClipboard(otp)
-                Toast.makeText(this, getString(R.string.copied_toast), Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "OTP ($otp) copied to clipboard!", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -99,35 +76,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.btnLaunchMainApp.setOnClickListener {
-            countDownTimer?.cancel()
             currentOtp?.let { otp ->
                 copyOtpToClipboard(otp)
                 launchMainAppWithOtp(otp)
             } ?: run {
                 launchMainAppDirectly()
-            }
-        }
-
-        binding.btnPause.setOnClickListener {
-            if (isPaused) {
-                isPaused = false
-                binding.btnPause.text = "Cancel"
-                startCountdown()
-            } else {
-                isPaused = true
-                countDownTimer?.cancel()
-                binding.btnPause.text = "Resume"
-                binding.tvCountdown.text = "Auto-launch paused"
-            }
-        }
-
-        binding.tvAutoFillHint.setOnClickListener {
-            try {
-                val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                startActivity(intent)
-                Toast.makeText(this, "Find 'NetMirror Companion' and turn it ON to auto-click and auto-type OTP!", Toast.LENGTH_LONG).show()
-            } catch (e: Exception) {
-                Log.e(TAG, "Cannot open accessibility settings", e)
             }
         }
     }
@@ -289,8 +242,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun onOtpSuccessfullyExtracted(otp: String) {
         currentOtp = otp
-        AutoFillManager.activeOtp = otp
-        AutoFillManager.autoFillCompleted = false
 
         binding.progressBar.visibility = View.GONE
         binding.tvOtpCode.text = otp.chunked(1).joinToString(" ")
@@ -301,39 +252,13 @@ class MainActivity : AppCompatActivity() {
         binding.cardOtpOverlay.alpha = 0f
         binding.cardOtpOverlay.animate().alpha(1f).setDuration(300).start()
 
-        // Copy to clipboard immediately so it is ready
+        // Copy to clipboard immediately
         copyOtpToClipboard(otp)
-
-        // Start countdown to auto-open NetMirror TV
-        startCountdown()
-    }
-
-    private fun startCountdown() {
-        countDownTimer?.cancel()
-        binding.pbCountdown.max = COUNTDOWN_DURATION_MS.toInt()
-
-        countDownTimer = object : CountDownTimer(COUNTDOWN_DURATION_MS, COUNTDOWN_INTERVAL_MS) {
-            override fun onTick(millisUntilFinished: Long) {
-                val secondsLeft = ((millisUntilFinished + 999) / 1000).toInt()
-                binding.tvCountdown.text = "Opening NetMirror TV in ${secondsLeft}s..."
-                binding.pbCountdown.progress = millisUntilFinished.toInt()
-            }
-
-            override fun onFinish() {
-                binding.pbCountdown.progress = 0
-                binding.tvCountdown.text = "Opening NetMirror TV..."
-                currentOtp?.let { otp ->
-                    launchMainAppWithOtp(otp)
-                }
-            }
-        }.start()
+        Toast.makeText(this, "OTP ($otp) detected & copied to clipboard!", Toast.LENGTH_SHORT).show()
     }
 
     private fun resetOtpState() {
-        countDownTimer?.cancel()
         currentOtp = null
-        AutoFillManager.activeOtp = null
-        AutoFillManager.autoFillCompleted = false
         binding.cardOtpOverlay.visibility = View.GONE
         binding.tvOtpCode.text = getString(R.string.otp_placeholder)
         binding.tvStatus.text = getString(R.string.status_loading)
@@ -342,20 +267,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun launchMainAppWithOtp(otp: String) {
         try {
-            AutoFillManager.activeOtp = otp
-            AutoFillManager.autoFillCompleted = false
-
-            // Trigger accessibility auto-click & highlight sequence
-            NetMirrorAutoFillService.startDirectAutoFill(otp)
-
-            if (!AutoFillManager.isAccessibilityServiceEnabled(this)) {
-                Toast.makeText(
-                    this,
-                    "⚠️ Please turn ON 'NetMirror Companion' in Accessibility Settings for Auto-Click & Highlights!",
-                    Toast.LENGTH_LONG
-                ).show()
-            }
-
             // 1. Try known package names directly
             for (pkg in KNOWN_PACKAGES) {
                 val launchIntent = packageManager.getLaunchIntentForPackage(pkg)
@@ -365,11 +276,7 @@ class MainActivity : AppCompatActivity() {
                     launchIntent.putExtra("code", otp)
                     launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     startActivity(launchIntent)
-                    Toast.makeText(
-                        this,
-                        "Opening NetMirror TV...",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    Toast.makeText(this, "Opening NetMirror TV...", Toast.LENGTH_SHORT).show()
                     return
                 }
             }
@@ -397,11 +304,7 @@ class MainActivity : AppCompatActivity() {
                     intent.putExtra("otp", otp)
                     intent.putExtra("code", otp)
                     startActivity(intent)
-                    Toast.makeText(
-                        this,
-                        "Opening $appLabel...",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    Toast.makeText(this, "Opening $appLabel...", Toast.LENGTH_SHORT).show()
                     return
                 }
             }
@@ -427,11 +330,7 @@ class MainActivity : AppCompatActivity() {
                     intent.putExtra("otp", otp)
                     intent.putExtra("code", otp)
                     startActivity(intent)
-                    Toast.makeText(
-                        this,
-                        "Opening $appLabel...",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    Toast.makeText(this, "Opening $appLabel...", Toast.LENGTH_SHORT).show()
                     return
                 }
             }
@@ -504,7 +403,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        countDownTimer?.cancel()
         binding.webView.removeJavascriptInterface("AndroidBridge")
         binding.webView.destroy()
         super.onDestroy()
