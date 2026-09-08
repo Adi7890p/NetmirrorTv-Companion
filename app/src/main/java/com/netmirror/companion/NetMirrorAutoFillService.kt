@@ -1,7 +1,11 @@
 package com.netmirror.companion
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.GestureDescription
 import android.content.Context
+import android.graphics.Path
+import android.graphics.Rect
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -10,6 +14,7 @@ import android.text.TextUtils
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.widget.Toast
 
 object AutoFillManager {
     var activeOtp: String? = null
@@ -60,16 +65,22 @@ class NetMirrorAutoFillService : AccessibilityService() {
         }
 
         val packageNameStr = event.packageName?.toString() ?: ""
+        // Check if event is from NetMirror or TV app
         if (!packageNameStr.contains("netmirror", ignoreCase = true) &&
-            !packageNameStr.contains("netmirrortv", ignoreCase = true)
+            !packageNameStr.contains("companion", ignoreCase = true)
         ) {
             return
         }
 
-        // Search and retry across a short window while the TV animation plays
+        if (packageNameStr == packageName) {
+            // Ignore events from our own companion app
+            return
+        }
+
         if (!isSearching) {
             isSearching = true
-            attemptAutoFillWithRetries(otp, attemptsLeft = 15)
+            Log.d(TAG, "NetMirror TV window detected ($packageNameStr). Starting auto-click & type sequence...")
+            attemptAutoFillWithRetries(otp, attemptsLeft = 20)
         }
     }
 
@@ -88,39 +99,79 @@ class NetMirrorAutoFillService : AccessibilityService() {
         if (rootNode != null) {
             val targetNode = findOtpInputNode(rootNode)
             if (targetNode != null) {
-                Log.d(TAG, "Found target OTP input node: ${targetNode.className}. Performing auto-click and auto-fill...")
+                Log.d(TAG, "Found target OTP input node: ${targetNode.className}. Performing click and fill...")
 
-                // 1. Click and focus the input box
+                val rect = Rect()
+                targetNode.getBoundsInScreen(rect)
+
+                // 1. Accessibility Actions
                 targetNode.performAction(AccessibilityNodeInfo.ACTION_CLICK)
                 targetNode.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
 
-                // 2. Type the OTP after a short delay
+                // Also click parent if any
+                targetNode.parent?.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+
+                // 2. Physical Gesture Tap (React Native touch event trigger)
+                if (rect.width() > 0 && rect.height() > 0) {
+                    dispatchTapAt(rect.centerX().toFloat(), rect.centerY().toFloat())
+                } else {
+                    // Fallback to screen center coords for NetMirror TV
+                    val displayMetrics = resources.displayMetrics
+                    val x = displayMetrics.widthPixels / 2f
+                    val y = displayMetrics.heightPixels * 0.42f
+                    dispatchTapAt(x, y)
+                }
+
+                // 3. Insert text after tap
                 handler.postDelayed({
                     val args = Bundle().apply {
                         putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, otp)
                     }
                     val setTextSuccess = targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
                     targetNode.performAction(AccessibilityNodeInfo.ACTION_PASTE)
-                    Log.d(TAG, "Set text success: $setTextSuccess for OTP: $otp")
 
-                    if (setTextSuccess) {
-                        AutoFillManager.autoFillCompleted = true
-                        AutoFillManager.lastFilledOtp = otp
-                        isSearching = false
-                    }
-                }, 350)
+                    // Check focused node
+                    val focusedNode = rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+                    focusedNode?.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+                    focusedNode?.performAction(AccessibilityNodeInfo.ACTION_PASTE)
+
+                    Log.d(TAG, "OTP entry dispatched (success: $setTextSuccess). OTP: $otp")
+
+                    AutoFillManager.autoFillCompleted = true
+                    AutoFillManager.lastFilledOtp = otp
+                    isSearching = false
+
+                    try {
+                        Toast.makeText(applicationContext, "OTP ($otp) Auto-Filled!", Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {}
+                }, 450)
                 return
             }
         }
 
-        // Retry every 400ms while the TV app loads its splash/startup animation
+        // Retry every 350ms while NetMirror TV splash / animations render
         handler.postDelayed({
             attemptAutoFillWithRetries(otp, attemptsLeft - 1)
-        }, 400)
+        }, 350)
+    }
+
+    private fun dispatchTapAt(x: Float, y: Float) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            try {
+                val path = Path().apply {
+                    moveTo(x, y)
+                }
+                val stroke = GestureDescription.StrokeDescription(path, 0, 50)
+                val gesture = GestureDescription.Builder().addStroke(stroke).build()
+                dispatchGesture(gesture, null, null)
+                Log.d(TAG, "Dispatched physical touch gesture at ($x, $y)")
+            } catch (e: Exception) {
+                Log.e(TAG, "Gesture dispatch error: ${e.localizedMessage}", e)
+            }
+        }
     }
 
     private fun findOtpInputNode(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-        // Direct match on EditText or TextInput
         val className = node.className?.toString() ?: ""
         if (className.contains("EditText", ignoreCase = true) ||
             className.contains("TextInput", ignoreCase = true)
@@ -129,25 +180,26 @@ class NetMirrorAutoFillService : AccessibilityService() {
         }
 
         val text = node.text?.toString() ?: ""
-        val hint = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+        val hint = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             node.hintText?.toString() ?: ""
         } else {
             ""
         }
         val contentDesc = node.contentDescription?.toString() ?: ""
+        val viewId = node.viewIdResourceName ?: ""
 
         if (text.contains("Enter OTP", ignoreCase = true) ||
             hint.contains("Enter OTP", ignoreCase = true) ||
             contentDesc.contains("Enter OTP", ignoreCase = true) ||
             text.contains("Enter 6-digit", ignoreCase = true) ||
-            hint.contains("OTP", ignoreCase = true)
+            hint.contains("OTP", ignoreCase = true) ||
+            viewId.contains("otp", ignoreCase = true) ||
+            viewId.contains("input", ignoreCase = true)
         ) {
-            if (node.isClickable || node.isEditable || node.isFocusable) {
-                return node
-            }
+            return node
         }
 
-        // Recursively inspect children
+        // Inspect children
         for (i in 0 until node.childCount) {
             val child = node.getChild(i) ?: continue
             val found = findOtpInputNode(child)
