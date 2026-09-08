@@ -180,7 +180,7 @@ class NetMirrorAutoFillService : AccessibilityService() {
             val service = instance
             if (service != null) {
                 Log.d(TAG, "Direct auto-fill triggered with OTP: $otp")
-                service.scheduleAutoFillSequence(otp, delayMs = 4500L)
+                service.scheduleAutoFillSequence(otp, delayMs = 8000L)
             } else {
                 Log.w(TAG, "Service instance is null. Is Accessibility enabled in Android Settings?")
             }
@@ -216,116 +216,99 @@ class NetMirrorAutoFillService : AccessibilityService() {
 
         if (!isSearching) {
             isSearching = true
-            Log.d(TAG, "Foreground app change detected ($packageNameStr). Starting scan sequence...")
-            showToast("NetMirror detected! Scanning for OTP box...")
-            attemptAutoFillWithRetries(otp, attemptsLeft = 25)
+            Log.d(TAG, "Foreground app change detected ($packageNameStr). Waiting 8s before clicking...")
+            scheduleAutoFillSequence(otp, delayMs = 8000L)
         }
     }
 
     fun scheduleAutoFillSequence(otp: String, delayMs: Long) {
-        showToast("Waiting 4s for NetMirror animation to load...")
+        showToast("Waiting 8s for NetMirror TV animation to load...")
         handler.postDelayed({
             isSearching = true
-            attemptAutoFillWithRetries(otp, attemptsLeft = 25)
+            showToast("Starting multi-click on upper-center OTP area...")
+            performUpperHalfMultiClickSequence(otp)
         }, delayMs)
     }
 
-    private fun attemptAutoFillWithRetries(otp: String, attemptsLeft: Int) {
-        if (AutoFillManager.autoFillCompleted && AutoFillManager.lastFilledOtp == otp) {
-            isSearching = false
-            return
-        }
+    /**
+     * Performs a series of targeted clicks across the horizontal center and upper-half
+     * of the screen where the OTP input boxes are positioned.
+     */
+    private fun performUpperHalfMultiClickSequence(otp: String) {
+        val dm = resources.displayMetrics
+        val w = dm.widthPixels.toFloat()
+        val h = dm.heightPixels.toFloat()
+        val centerX = w / 2f
 
-        if (attemptsLeft <= 0) {
-            isSearching = false
-            return
-        }
+        // Multi-point coordinates in the horizontally center & upper-half region
+        val targetPoints = listOf(
+            Pair(centerX, h * 0.38f),                           // Upper-center row 1
+            Pair(centerX, h * 0.44f),                           // Upper-center row 2 (primary OTP line)
+            Pair(centerX, h * 0.50f),                           // Center-middle row
+            Pair(centerX - (w * 0.12f), h * 0.44f),            // Left digit box
+            Pair(centerX + (w * 0.12f), h * 0.44f),            // Right digit box
+            Pair(centerX, h * 0.32f)                            // High center fallback
+        )
 
+        // 1. First inspect if AccessibilityNodeInfo finds a specific node
         val rootNode = rootInActiveWindow
         if (rootNode != null) {
-            val targetNode = findOtpInputNode(rootNode)
-            if (targetNode != null) {
+            val node = findOtpInputNode(rootNode)
+            if (node != null) {
                 val rect = Rect()
-                targetNode.getBoundsInScreen(rect)
+                node.getBoundsInScreen(rect)
+                val nodeX = if (rect.width() > 0) rect.centerX().toFloat() else centerX
+                val nodeY = if (rect.height() > 0) rect.centerY().toFloat() else h * 0.44f
 
-                val clickX: Float
-                val clickY: Float
-                if (rect.width() > 0 && rect.height() > 0) {
-                    clickX = rect.centerX().toFloat()
-                    clickY = rect.centerY().toFloat()
-                } else {
-                    val dm = resources.displayMetrics
-                    clickX = dm.widthPixels / 2f
-                    clickY = dm.heightPixels * 0.44f
+                Log.d(TAG, "Found explicit node at ($nodeX, $nodeY)")
+                showClickHighlight(nodeX, nodeY, "Target OTP Box ($otp)")
+                showToast("Clicking OTP Box at (${nodeX.toInt()}, ${nodeY.toInt()})")
+
+                node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                node.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+                node.parent?.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                dispatchTapAt(nodeX, nodeY)
+
+                val args = Bundle().apply {
+                    putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, otp)
                 }
-
-                Log.d(TAG, "Target node found at ($clickX, $clickY)! Showing highlight and clicking...")
-
-                // 1. Show Visual Highlight on Screen & Toast Message
-                showClickHighlight(clickX, clickY, "Clicked OTP Box ($otp)")
-                showToast("Clicked OTP Box at (" + clickX.toInt() + ", " + clickY.toInt() + ")")
-
-                // 2. Perform Accessibility Actions
-                targetNode.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-                targetNode.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
-                targetNode.parent?.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-
-                // 3. Dispatch Physical Touch Gesture
-                dispatchTapAt(clickX, clickY)
-
-                // 4. Fill OTP after gesture registers
-                handler.postDelayed({
-                    val args = Bundle().apply {
-                        putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, otp)
-                    }
-                    val setTextSuccess = targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
-                    targetNode.performAction(AccessibilityNodeInfo.ACTION_PASTE)
-
-                    val focusedNode = rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-                    focusedNode?.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
-                    focusedNode?.performAction(AccessibilityNodeInfo.ACTION_PASTE)
-
-                    Log.d(TAG, "OTP entry dispatched (success: $setTextSuccess). OTP: $otp")
-
-                    AutoFillManager.autoFillCompleted = true
-                    AutoFillManager.lastFilledOtp = otp
-                    isSearching = false
-
-                    showToast("OTP ($otp) Entered Successfully!")
-                }, 400)
-                return
-            } else if (attemptsLeft == 12) {
-                // Smart fallback click at center coordinates (typical TV layout)
-                val dm = resources.displayMetrics
-                val clickX = dm.widthPixels / 2f
-                val clickY = dm.heightPixels * 0.44f
-
-                Log.d(TAG, "Smart fallback click triggered at ($clickX, $clickY)")
-                showClickHighlight(clickX, clickY, "Clicked OTP Box ($otp)")
-                showToast("Auto-Clicking OTP Box at (" + clickX.toInt() + ", " + clickY.toInt() + ")")
-                dispatchTapAt(clickX, clickY)
-
-                handler.postDelayed({
-                    val focused = rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-                    val args = Bundle().apply {
-                        putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, otp)
-                    }
-                    focused?.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
-                    focused?.performAction(AccessibilityNodeInfo.ACTION_PASTE)
-
-                    AutoFillManager.autoFillCompleted = true
-                    AutoFillManager.lastFilledOtp = otp
-                    isSearching = false
-                    showToast("OTP ($otp) Entered Successfully!")
-                }, 400)
-                return
+                node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+                node.performAction(AccessibilityNodeInfo.ACTION_PASTE)
             }
         }
 
-        // Retry every 350ms while NetMirror TV splash / animation is running
+        // 2. Perform sequential physical taps across all upper-center points
+        for ((index, point) in targetPoints.withIndex()) {
+            val (px, py) = point
+            val delay = index * 400L
+
+            handler.postDelayed({
+                if (!AutoFillManager.autoFillCompleted || index < 3) {
+                    Log.d(TAG, "Multi-click step ${index + 1}/${targetPoints.size} at ($px, $py)")
+                    showClickHighlight(px, py, "Click ${index + 1}: ($otp)")
+                    showToast("Clicking (${px.toInt()}, ${py.toInt()})")
+                    dispatchTapAt(px, py)
+
+                    // Inject OTP at each step
+                    handler.postDelayed({
+                        val args = Bundle().apply {
+                            putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, otp)
+                        }
+                        val focused = rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+                        focused?.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+                        focused?.performAction(AccessibilityNodeInfo.ACTION_PASTE)
+                    }, 150)
+                }
+            }, delay)
+        }
+
+        // Mark completed after full sequence runs
         handler.postDelayed({
-            attemptAutoFillWithRetries(otp, attemptsLeft - 1)
-        }, 350)
+            AutoFillManager.autoFillCompleted = true
+            AutoFillManager.lastFilledOtp = otp
+            isSearching = false
+            showToast("OTP ($otp) Filled Across Target Area!")
+        }, (targetPoints.size * 400L) + 500L)
     }
 
     /**
