@@ -25,7 +25,16 @@ jobs:
         gradle-version: '8.5'
 
     - name: Build Debug APK
-      run: gradle :app:assembleDebug --stacktrace --info
+      run: |
+        gradle :app:assembleDebug --stacktrace 2>&1 | tee build_output.log
+
+    - name: Dump Error if Failed
+      if: failure()
+      run: |
+        echo "### Build Failure Log" >> $GITHUB_STEP_SUMMARY
+        echo '```text' >> $GITHUB_STEP_SUMMARY
+        tail -n 100 build_output.log >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
 
     - name: Upload Debug APK
       if: always()
