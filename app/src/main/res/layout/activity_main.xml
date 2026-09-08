@@ -1,164 +1,231 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/dark_bg"
-    android:orientation="vertical"
-    android:padding="16dp">
+    android:background="@color/dark_bg">
 
-    <!-- Header / Title -->
-    <TextView
-        android:id="@+id/tvHeader"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"
-        android:text="@string/app_name"
-        android:textColor="@color/text_primary"
-        android:textSize="22sp"
-        android:textStyle="bold" />
+    <!-- 1. Full-Screen Live WebView (Shown directly on startup) -->
+    <WebView
+        android:id="@+id/webView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 
-    <!-- OTP Display Card -->
+    <!-- 2. Sleek Floating Top Bar / HUD -->
     <com.google.android.material.card.MaterialCardView
-        android:id="@+id/cardOtp"
+        android:id="@+id/topBarCard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="14dp"
-        app:cardBackgroundColor="@color/card_bg"
+        android:layout_margin="12dp"
+        app:cardBackgroundColor="#E6161922"
         app:cardCornerRadius="14dp"
-        app:cardElevation="4dp"
+        app:cardElevation="6dp"
         app:strokeColor="@color/border_color"
         app:strokeWidth="1dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="10dp">
+
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:contentDescription="@string/app_name"
+                android:src="@drawable/ic_launcher" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvHeader"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/app_name"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ProgressBar
+                        android:id="@+id/progressBar"
+                        style="?android:attr/progressBarStyleSmall"
+                        android:layout_width="12dp"
+                        android:layout_height="12dp"
+                        android:layout_marginEnd="6dp"
+                        android:indeterminateTint="@color/accent_primary" />
+
+                    <TextView
+                        android:id="@+id/tvStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/status_loading"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnRefresh"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:minWidth="0dp"
+                android:paddingHorizontal="8dp"
+                android:text="@string/btn_refresh"
+                android:textColor="@color/accent_cyan"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- 3. Floating Animated Countdown & Auto-Launch Card (Appears when OTP is detected) -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardOtpOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_margin="14dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="#F2161922"
+        app:cardCornerRadius="18dp"
+        app:cardElevation="10dp"
+        app:strokeColor="@color/border_color"
+        app:strokeWidth="1.5dp"
+        tools:visibility="visible">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:gravity="center"
             android:orientation="vertical"
-            android:padding="18dp">
+            android:padding="16dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/otp_label"
+                android:letterSpacing="0.1"
+                android:text="6-DIGIT OTP GENERATED"
                 android:textColor="@color/text_secondary"
-                android:textSize="14sp"
+                android:textSize="12sp"
                 android:textStyle="bold" />
 
-            <!-- 6-digit OTP Display -->
+            <!-- Glowing Big OTP Code -->
             <TextView
                 android:id="@+id/tvOtpCode"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:layout_marginBottom="8dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="6dp"
                 android:letterSpacing="0.25"
                 android:text="@string/otp_placeholder"
                 android:textColor="@color/accent_green"
-                android:textSize="36sp"
+                android:textSize="38sp"
                 android:textStyle="bold"
                 tools:text="3 1 9 3 3 5" />
 
-            <!-- Status Indicator -->
+            <!-- Animated 5-Second Countdown Indicator -->
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <ProgressBar
-                    android:id="@+id/progressBar"
-                    style="?android:attr/progressBarStyleSmall"
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:layout_marginEnd="8dp"
-                    android:indeterminateTint="@color/accent_primary" />
+                android:gravity="center"
+                android:orientation="vertical">
 
                 <TextView
-                    android:id="@+id/tvStatus"
+                    android:id="@+id/tvCountdown"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/status_loading"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="13sp" />
+                    android:text="Launching NetMirror TV in 5 seconds..."
+                    android:textColor="@color/accent_cyan"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <ProgressBar
+                    android:id="@+id/pbCountdown"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="6dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="12dp"
+                    android:max="5000"
+                    android:progress="5000"
+                    android:progressTint="@color/accent_cyan" />
             </LinearLayout>
 
             <!-- Action Buttons Row -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
                 android:orientation="horizontal"
-                android:weightSum="2">
+                android:weightSum="3">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnLaunchMainApp"
+                    style="@style/Widget.MaterialComponents.Button"
+                    android:layout_width="0dp"
+                    android:layout_height="46dp"
+                    android:layout_marginEnd="4dp"
+                    android:layout_weight="1.6"
+                    android:backgroundTint="@color/accent_primary"
+                    android:text="Launch Now"
+                    android:textColor="@color/white"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="8dp" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnCopy"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="6dp"
-                    android:layout_weight="1"
-                    android:enabled="false"
-                    android:text="@string/btn_copy"
+                    android:layout_height="46dp"
+                    android:layout_marginHorizontal="2dp"
+                    android:layout_weight="0.8"
+                    android:text="Copy"
                     android:textColor="@color/text_primary"
+                    android:textSize="12sp"
                     app:cornerRadius="8dp"
                     app:strokeColor="@color/border_color" />
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnRefresh"
+                    android:id="@+id/btnPause"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="6dp"
-                    android:layout_weight="1"
-                    android:text="@string/btn_refresh"
-                    android:textColor="@color/text_primary"
+                    android:layout_height="46dp"
+                    android:layout_marginStart="4dp"
+                    android:layout_weight="0.6"
+                    android:text="Cancel"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp"
                     app:cornerRadius="8dp"
                     app:strokeColor="@color/border_color" />
+
             </LinearLayout>
 
-            <!-- Launch Main App Button -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnLaunchMainApp"
-                style="@style/Widget.MaterialComponents.Button"
-                android:layout_width="match_parent"
+            <TextView
+                android:id="@+id/tvAutoFillHint"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:backgroundTint="@color/accent_primary"
-                android:text="@string/btn_launch_app"
-                android:textColor="@color/white"
-                android:textSize="15sp"
-                android:textStyle="bold"
-                app:cornerRadius="8dp" />
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:text="Will automatically click \'Enter OTP\' and fill the code in NetMirror TV."
+                android:textColor="@color/text_muted"
+                android:textSize="11sp" />
 
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- WebView Section Header -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="6dp"
-        android:text="@string/title_webview"
-        android:textColor="@color/text_secondary"
-        android:textSize="12sp" />
-
-    <!-- Embedded Live WebView Container -->
-    <com.google.android.material.card.MaterialCardView
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        app:cardBackgroundColor="@color/card_bg"
-        app:cardCornerRadius="12dp"
-        app:strokeColor="@color/border_color"
-        app:strokeWidth="1dp">
-
-        <WebView
-            android:id="@+id/webView"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" />
-
-    </com.google.android.material.card.MaterialCardView>
-
-</LinearLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

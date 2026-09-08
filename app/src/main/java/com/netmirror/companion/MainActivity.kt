@@ -9,8 +9,10 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
+import android.os.CountDownTimer
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.util.Log
 import android.view.View
 import android.webkit.WebResourceError
@@ -26,11 +28,15 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private var currentOtp: String? = null
+    private var countDownTimer: CountDownTimer? = null
+    private var isPaused = false
     private val mainHandler = Handler(Looper.getMainLooper())
 
     companion object {
         private const val TAG = "NetMirrorCompanion"
         private const val OTP_TARGET_URL = "https://netmirror.gg/tv"
+        private const val COUNTDOWN_DURATION_MS = 5000L
+        private const val COUNTDOWN_INTERVAL_MS = 50L
 
         // Candidate package identifiers for NetMirror TV
         private val KNOWN_PACKAGES = listOf(
@@ -68,8 +74,6 @@ class MainActivity : AppCompatActivity() {
             currentOtp?.let { otp ->
                 copyOtpToClipboard(otp)
                 Toast.makeText(this, getString(R.string.copied_toast), Toast.LENGTH_SHORT).show()
-            } ?: run {
-                Toast.makeText(this, "OTP code not ready yet", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -79,12 +83,37 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.btnLaunchMainApp.setOnClickListener {
+            countDownTimer?.cancel()
             currentOtp?.let { otp ->
                 copyOtpToClipboard(otp)
                 launchMainAppWithOtp(otp)
             } ?: run {
-                // If code is not yet generated or user is already logged in, launch NetMirror TV directly!
                 launchMainAppDirectly()
+            }
+        }
+
+        binding.btnPause.setOnClickListener {
+            if (isPaused) {
+                isPaused = false
+                binding.btnPause.text = "Cancel"
+                start5SecondCountdown()
+            } else {
+                isPaused = true
+                countDownTimer?.cancel()
+                binding.btnPause.text = "Resume"
+                binding.tvCountdown.text = "Auto-launch paused"
+            }
+        }
+
+        binding.tvAutoFillHint.setOnClickListener {
+            if (!AutoFillManager.isAccessibilityServiceEnabled(this)) {
+                try {
+                    val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                    startActivity(intent)
+                    Toast.makeText(this, "Enable 'NetMirror Companion' for auto-typing OTP!", Toast.LENGTH_LONG).show()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Cannot open accessibility settings", e)
+                }
             }
         }
     }
@@ -246,22 +275,55 @@ class MainActivity : AppCompatActivity() {
 
     private fun onOtpSuccessfullyExtracted(otp: String) {
         currentOtp = otp
+        AutoFillManager.activeOtp = otp
+        AutoFillManager.autoFillCompleted = false
+
         binding.progressBar.visibility = View.GONE
-        
-        // Format as spaced digits "3 1 9 3 3 5" for high contrast readability
         binding.tvOtpCode.text = otp.chunked(1).joinToString(" ")
         binding.tvStatus.text = getString(R.string.status_ready)
-        binding.btnCopy.isEnabled = true
-        binding.btnLaunchMainApp.isEnabled = true
+
+        // Show overlay with animation
+        binding.cardOtpOverlay.visibility = View.VISIBLE
+        binding.cardOtpOverlay.alpha = 0f
+        binding.cardOtpOverlay.animate().alpha(1f).setDuration(300).start()
+
+        // Copy to clipboard immediately
+        copyOtpToClipboard(otp)
+
+        // Start the 5-second countdown timer animation
+        start5SecondCountdown()
+    }
+
+    private fun start5SecondCountdown() {
+        countDownTimer?.cancel()
+        binding.pbCountdown.max = COUNTDOWN_DURATION_MS.toInt()
+
+        countDownTimer = object : CountDownTimer(COUNTDOWN_DURATION_MS, COUNTDOWN_INTERVAL_MS) {
+            override fun onTick(millisUntilFinished: Long) {
+                val secondsLeft = ((millisUntilFinished + 999) / 1000).toInt()
+                binding.tvCountdown.text = "Launching NetMirror TV in ${secondsLeft}s..."
+                binding.pbCountdown.progress = millisUntilFinished.toInt()
+            }
+
+            override fun onFinish() {
+                binding.pbCountdown.progress = 0
+                binding.tvCountdown.text = "Launching NetMirror TV now..."
+                currentOtp?.let { otp ->
+                    launchMainAppWithOtp(otp)
+                }
+            }
+        }.start()
     }
 
     private fun resetOtpState() {
+        countDownTimer?.cancel()
         currentOtp = null
+        AutoFillManager.activeOtp = null
+        AutoFillManager.autoFillCompleted = false
+        binding.cardOtpOverlay.visibility = View.GONE
         binding.tvOtpCode.text = getString(R.string.otp_placeholder)
         binding.tvStatus.text = getString(R.string.status_loading)
         binding.progressBar.visibility = View.VISIBLE
-        binding.btnCopy.isEnabled = false
-        binding.btnLaunchMainApp.isEnabled = true
     }
 
     private fun launchMainAppWithOtp(otp: String) {
@@ -365,6 +427,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        countDownTimer?.cancel()
         binding.webView.removeJavascriptInterface("AndroidBridge")
         binding.webView.destroy()
         super.onDestroy()
