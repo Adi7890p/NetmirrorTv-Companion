@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.netmirror.companion">
 
     <!-- Internet & Network State Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Allow finding installed NetMirror TV app packages on Android 11+ -->
+    <uses-permission
+        android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesCondition" />
 
     <!-- Allow installing on all Android devices (Phones, Tablets, Android TV, Fire TV) -->
     <uses-feature
@@ -16,11 +21,19 @@
 
     <!-- Queries for launching main app via deep link or package name -->
     <queries>
+        <package android:name="com.netmirrortv" />
+        <package android:name="com.netmirror.tv" />
         <package android:name="com.netmirror.tvos" />
         <package android:name="com.netmirror" />
+        <package android:name="com.netmirror.app" />
+        <package android:name="tv.netmirror" />
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="netmirror" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="netmirrortv" />
         </intent>
     </queries>
 

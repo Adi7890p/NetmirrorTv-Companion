@@ -5,11 +5,13 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.View
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -18,7 +20,6 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.netmirror.companion.R
 import com.netmirror.companion.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
@@ -28,9 +29,28 @@ class MainActivity : AppCompatActivity() {
     private val mainHandler = Handler(Looper.getMainLooper())
 
     companion object {
+        private const val TAG = "NetMirrorCompanion"
         private const val OTP_TARGET_URL = "https://netmirror.gg/tv"
-        private const val MAIN_APP_SCHEME_URI = "netmirror://otp?code="
-        private const val MAIN_APP_PACKAGE_NAME = "com.netmirror.tvos"
+
+        // Candidate package identifiers for NetMirror TV
+        private val KNOWN_PACKAGES = listOf(
+            "com.netmirrortv",
+            "com.netmirror.tv",
+            "com.netmirror.tvos",
+            "com.netmirror",
+            "com.netmirror.app",
+            "tv.netmirror",
+            "org.netmirror",
+            "com.netmirror.android"
+        )
+
+        // Deep links supported
+        private val DEEP_LINK_SCHEMES = listOf(
+            "netmirrortv://otp?code=",
+            "netmirror://otp?code=",
+            "netmirrortv://login?otp=",
+            "netmirror://login?otp="
+        )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,9 +66,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupListeners() {
         binding.btnCopy.setOnClickListener {
             currentOtp?.let { otp ->
-                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                val clip = ClipData.newPlainText("NetMirror OTP", otp)
-                clipboard.setPrimaryClip(clip)
+                copyOtpToClipboard(otp)
                 Toast.makeText(this, getString(R.string.copied_toast), Toast.LENGTH_SHORT).show()
             }
         }
@@ -60,9 +78,18 @@ class MainActivity : AppCompatActivity() {
 
         binding.btnLaunchMainApp.setOnClickListener {
             currentOtp?.let { otp ->
+                copyOtpToClipboard(otp)
                 launchMainAppWithOtp(otp)
+            } ?: run {
+                Toast.makeText(this, "OTP code not ready yet", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    private fun copyOtpToClipboard(otp: String) {
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = ClipData.newPlainText("NetMirror OTP", otp)
+        clipboard.setPrimaryClip(clip)
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -74,14 +101,18 @@ class MainActivity : AppCompatActivity() {
         settings.cacheMode = WebSettings.LOAD_DEFAULT
         settings.useWideViewPort = true
         settings.loadWithOverviewMode = true
-        
+
         // Standard Android Chrome User-Agent to pass Cloudflare checks cleanly
-        settings.userAgentString = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
+        settings.userAgentString =
+            "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
 
         // Register Native Android <-> JS Bridge
-        binding.webView.addJavascriptInterface(WebAppInterface { extractedOtp ->
+        binding.webView.addJavascriptInterface(WebAppInterface { rawOtp ->
             mainHandler.post {
-                onOtpSuccessfullyExtracted(extractedOtp)
+                val cleaned = rawOtp.trim()
+                if (cleaned.length == 6 && cleaned.all { it.isDigit() } && cleaned != "000000") {
+                    onOtpSuccessfullyExtracted(cleaned)
+                }
             }
         }, "AndroidBridge")
 
@@ -120,47 +151,90 @@ class MainActivity : AppCompatActivity() {
     private fun injectOtpExtractionScript() {
         val script = """
             (function() {
-                function checkAndExtractDigits() {
+                if (window.__otpObserverAttached) {
+                    return;
+                }
+                window.__otpObserverAttached = true;
+
+                var lastCode = '';
+
+                function extractOtpFromDOM() {
                     try {
-                        var digits = document.querySelectorAll('div.digit');
-                        if (digits && digits.length === 6) {
+                        // 1. Check for div.digit or any element with 'digit' class
+                        var digits = document.querySelectorAll('div.digit, .digit, [class*="digit"]');
+                        if (digits && digits.length >= 6) {
                             var code = '';
-                            for (var i = 0; i < digits.length; i++) {
+                            for (var i = 0; i < 6; i++) {
                                 code += (digits[i].innerText || digits[i].textContent || '').trim();
                             }
-                            if (code.length === 6 && /^\d{6}$/.test(code)) {
-                                if (window.AndroidBridge && window.AndroidBridge.onOtpExtracted) {
-                                    window.AndroidBridge.onOtpExtracted(code);
+                            if (code.length === 6 && /^\d{6}$/.test(code) && code !== '000000') {
+                                return code;
+                            }
+                        }
+
+                        // 2. Look for container with 6 child boxes containing single digits
+                        var containers = document.querySelectorAll('div, section, main');
+                        for (var c = 0; c < containers.length; c++) {
+                            var ch = containers[c].children;
+                            if (ch && ch.length === 6) {
+                                var candidate = '';
+                                var valid = true;
+                                for (var k = 0; k < 6; k++) {
+                                    var txt = (ch[k].innerText || ch[k].textContent || '').trim();
+                                    if (txt.length === 1 && /\d/.test(txt)) {
+                                        candidate += txt;
+                                    } else {
+                                        valid = false;
+                                        break;
+                                    }
                                 }
-                                return true;
+                                if (valid && candidate.length === 6 && candidate !== '000000') {
+                                    return candidate;
+                                }
+                            }
+                        }
+
+                        // 3. Regex scan text nodes for 6 consecutive digits (excluding 000000)
+                        var text = document.body ? (document.body.innerText || document.body.textContent || '') : '';
+                        var matches = text.match(/\b\d{6}\b/g);
+                        if (matches) {
+                            for (var m = 0; m < matches.length; m++) {
+                                if (matches[m] !== '000000') {
+                                    return matches[m];
+                                }
                             }
                         }
                     } catch (e) {
-                        console.error('Extraction error:', e);
+                        console.error('DOM OTP error:', e);
                     }
-                    return false;
+                    return null;
                 }
 
-                if (!checkAndExtractDigits()) {
-                    var observer = new MutationObserver(function(mutations, obs) {
-                        if (checkAndExtractDigits()) {
-                            obs.disconnect();
+                function checkAndDispatch() {
+                    var found = extractOtpFromDOM();
+                    if (found && found !== lastCode) {
+                        lastCode = found;
+                        if (window.AndroidBridge && window.AndroidBridge.onOtpExtracted) {
+                            window.AndroidBridge.onOtpExtracted(found);
                         }
-                    });
-                    observer.observe(document.body || document.documentElement, {
-                        childList: true,
-                        subtree: true,
-                        characterData: true
-                    });
-
-                    var pollCount = 0;
-                    var intervalId = setInterval(function() {
-                        pollCount++;
-                        if (checkAndExtractDigits() || pollCount > 40) {
-                            clearInterval(intervalId);
-                        }
-                    }, 500);
+                    }
                 }
+
+                // Initial extraction attempt
+                checkAndDispatch();
+
+                // Continuous MutationObserver (Keeps listening for AJAX/DOM updates)
+                var observer = new MutationObserver(function() {
+                    checkAndDispatch();
+                });
+                observer.observe(document.body || document.documentElement, {
+                    childList: true,
+                    subtree: true,
+                    characterData: true
+                });
+
+                // Periodic check interval
+                setInterval(checkAndDispatch, 350);
             })();
         """.trimIndent()
 
@@ -170,7 +244,8 @@ class MainActivity : AppCompatActivity() {
     private fun onOtpSuccessfullyExtracted(otp: String) {
         currentOtp = otp
         binding.progressBar.visibility = View.GONE
-        binding.tvOtpCode.text = otp
+        // Format as spaced digits "3 1 9 3 3 5" for maximum clarity
+        binding.tvOtpCode.text = otp.chunked(1).joinToString(" ")
         binding.tvStatus.text = getString(R.string.status_ready)
         binding.btnCopy.isEnabled = true
         binding.btnLaunchMainApp.isEnabled = true
@@ -187,34 +262,67 @@ class MainActivity : AppCompatActivity() {
 
     private fun launchMainAppWithOtp(otp: String) {
         try {
-            val deepLinkUri = Uri.parse("$MAIN_APP_SCHEME_URI$otp")
-            val deepLinkIntent = Intent(Intent.ACTION_VIEW, deepLinkUri).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            // 1. Try deep links
+            for (scheme in DEEP_LINK_SCHEMES) {
+                try {
+                    val uri = Uri.parse("$scheme$otp")
+                    val deepIntent = Intent(Intent.ACTION_VIEW, uri).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    }
+                    if (deepIntent.resolveActivity(packageManager) != null) {
+                        startActivity(deepIntent)
+                        Toast.makeText(this, "Opening NetMirror TV App...", Toast.LENGTH_SHORT).show()
+                        return
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Deep link failed: $scheme", e)
+                }
             }
 
-            if (deepLinkIntent.resolveActivity(packageManager) != null) {
-                startActivity(deepLinkIntent)
-                return
+            // 2. Try known package names
+            for (pkg in KNOWN_PACKAGES) {
+                val launchIntent = packageManager.getLaunchIntentForPackage(pkg)
+                if (launchIntent != null) {
+                    launchIntent.putExtra("otp_code", otp)
+                    launchIntent.putExtra("otp", otp)
+                    launchIntent.putExtra("code", otp)
+                    launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    startActivity(launchIntent)
+                    Toast.makeText(this, "Opening NetMirror TV ($pkg)...", Toast.LENGTH_SHORT).show()
+                    return
+                }
             }
 
-            val launchIntent = packageManager.getLaunchIntentForPackage(MAIN_APP_PACKAGE_NAME)
-            if (launchIntent != null) {
-                launchIntent.putExtra("otp_code", otp)
-                launchIntent.putExtra("otp", otp)
-                launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                startActivity(launchIntent)
-                return
+            // 3. Dynamically search all installed packages for any matching "netmirror"
+            val installedPackages = packageManager.getInstalledPackages(PackageManager.GET_META_DATA)
+            for (pInfo in installedPackages) {
+                val pkgName = pInfo.packageName
+                if (pkgName == packageName) continue // Skip our own companion app
+
+                val appLabel = pInfo.applicationInfo?.let { packageManager.getApplicationLabel(it).toString() } ?: ""
+                val matchesPkg = pkgName.contains("netmirror", ignoreCase = true) || pkgName.contains("netmirrortv", ignoreCase = true)
+                val matchesLabel = appLabel.contains("netmirror", ignoreCase = true) || appLabel.contains("netmirrortv", ignoreCase = true)
+
+                if (matchesPkg || matchesLabel) {
+                    val dynamicIntent = packageManager.getLaunchIntentForPackage(pkgName)
+                    if (dynamicIntent != null) {
+                        dynamicIntent.putExtra("otp_code", otp)
+                        dynamicIntent.putExtra("otp", otp)
+                        dynamicIntent.putExtra("code", otp)
+                        dynamicIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        startActivity(dynamicIntent)
+                        Toast.makeText(this, "Opening $appLabel ($pkgName)...", Toast.LENGTH_SHORT).show()
+                        return
+                    }
+                }
             }
 
-            val fallbackIntent = packageManager.getLaunchIntentForPackage("com.netmirror")
-            if (fallbackIntent != null) {
-                fallbackIntent.putExtra("otp_code", otp)
-                fallbackIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                startActivity(fallbackIntent)
-                return
-            }
-
-            Toast.makeText(this, getString(R.string.launch_error_toast), Toast.LENGTH_LONG).show()
+            // 4. Fallback if no installed target app was found
+            Toast.makeText(
+                this,
+                "NetMirror TV app not found on this device. Code '$otp' copied to clipboard!",
+                Toast.LENGTH_LONG
+            ).show()
 
         } catch (e: Exception) {
             Toast.makeText(this, "Error opening app: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
