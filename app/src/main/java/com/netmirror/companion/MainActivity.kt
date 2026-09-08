@@ -61,9 +61,6 @@ class MainActivity : AppCompatActivity() {
         setupListeners()
         setupWebView()
         loadOtpPage()
-
-        // Set initial TV remote focus on the main action button
-        binding.btnLaunchMainApp.requestFocus()
     }
 
     private fun setupListeners() {
@@ -229,7 +226,7 @@ class MainActivity : AppCompatActivity() {
                 // Initial extraction attempt
                 checkAndDispatch();
 
-                // Continuous MutationObserver
+                // Continuous MutationObserver (Keeps listening for AJAX/DOM updates)
                 var observer = new MutationObserver(function() {
                     checkAndDispatch();
                 });
@@ -251,29 +248,20 @@ class MainActivity : AppCompatActivity() {
         currentOtp = otp
         binding.progressBar.visibility = View.GONE
         
-        // Update the 6 discrete TV digit boxes
-        if (otp.length == 6) {
-            binding.tvDigit1.text = otp[0].toString()
-            binding.tvDigit2.text = otp[1].toString()
-            binding.tvDigit3.text = otp[2].toString()
-            binding.tvDigit4.text = otp[3].toString()
-            binding.tvDigit5.text = otp[4].toString()
-            binding.tvDigit6.text = otp[5].toString()
-        }
-
+        // Format as spaced digits "3 1 9 3 3 5" for high contrast readability
+        binding.tvOtpCode.text = otp.chunked(1).joinToString(" ")
         binding.tvStatus.text = getString(R.string.status_ready)
+        binding.btnCopy.isEnabled = true
+        binding.btnLaunchMainApp.isEnabled = true
     }
 
     private fun resetOtpState() {
         currentOtp = null
-        binding.tvDigit1.text = "-"
-        binding.tvDigit2.text = "-"
-        binding.tvDigit3.text = "-"
-        binding.tvDigit4.text = "-"
-        binding.tvDigit5.text = "-"
-        binding.tvDigit6.text = "-"
+        binding.tvOtpCode.text = getString(R.string.otp_placeholder)
         binding.tvStatus.text = getString(R.string.status_loading)
         binding.progressBar.visibility = View.VISIBLE
+        binding.btnCopy.isEnabled = false
+        binding.btnLaunchMainApp.isEnabled = true
     }
 
     private fun launchMainAppWithOtp(otp: String) {
