@@ -3,8 +3,6 @@ name: Build NetMirror Companion APK
 on:
   push:
     branches: [ "main", "master" ]
-  pull_request:
-    branches: [ "main", "master" ]
   workflow_dispatch:
 
 jobs:
@@ -21,13 +19,14 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Generate Official Gradle Wrapper
-      run: |
-        gradle wrapper --gradle-version 8.5
-        chmod +x ./gradlew
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v4
+      with:
+        gradle-version: '8.5'
+        cache-disabled: true
 
     - name: Build Debug APK
-      run: ./gradlew assembleDebug --no-daemon --stacktrace
+      run: gradle assembleDebug --no-daemon
 
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
