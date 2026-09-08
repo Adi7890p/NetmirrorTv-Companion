@@ -503,11 +503,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        checkAccessibilityStatus()
-    }
-
     override fun onDestroy() {
         countDownTimer?.cancel()
         binding.webView.removeJavascriptInterface("AndroidBridge")
