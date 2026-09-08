@@ -23,10 +23,9 @@ jobs:
       uses: gradle/actions/setup-gradle@v4
       with:
         gradle-version: '8.5'
-        cache-disabled: true
 
     - name: Build Debug APK
-      run: gradle assembleDebug --no-daemon
+      run: gradle assembleDebug --stacktrace --info
 
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
