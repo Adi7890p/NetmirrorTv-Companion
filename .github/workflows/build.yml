@@ -21,13 +21,14 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Setup Gradle 8.5
-      uses: gradle/actions/setup-gradle@v3
-      with:
-        gradle-version: '8.5'
+    - name: Download Official Gradle Wrapper JAR
+      run: |
+        mkdir -p gradle/wrapper
+        curl -sLo gradle/wrapper/gradle-wrapper.jar https://raw.githubusercontent.com/gradle/gradle/v8.5.0/gradle/wrapper/gradle-wrapper.jar
+        chmod +x ./gradlew
 
     - name: Build Debug APK
-      run: gradle assembleDebug --stacktrace
+      run: ./gradlew assembleDebug --no-daemon
 
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
