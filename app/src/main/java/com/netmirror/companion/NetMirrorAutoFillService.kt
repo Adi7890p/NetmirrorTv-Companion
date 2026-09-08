@@ -89,7 +89,7 @@ class ClickHighlighterView(
         color = Color.parseColor("#00E5FF")
     }
 
-    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
         color = Color.WHITE
         textSize = 34f
         typeface = Typeface.DEFAULT_BOLD
@@ -192,7 +192,7 @@ class NetMirrorAutoFillService : AccessibilityService() {
         instance = this
         windowManager = getSystemService(Context.WINDOW_SERVICE) as? WindowManager
         Log.d(TAG, "NetMirrorAutoFillService connected!")
-        showToast("✅ NetMirror Auto-Clicker Service Active!")
+        showToast("NetMirror Auto-Clicker Service Active!")
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -217,13 +217,13 @@ class NetMirrorAutoFillService : AccessibilityService() {
         if (!isSearching) {
             isSearching = true
             Log.d(TAG, "Foreground app change detected ($packageNameStr). Starting scan sequence...")
-            showToast("📺 NetMirror detected! Scanning for OTP box...")
+            showToast("NetMirror detected! Scanning for OTP box...")
             attemptAutoFillWithRetries(otp, attemptsLeft = 25)
         }
     }
 
     fun scheduleAutoFillSequence(otp: String, delayMs: Long) {
-        showToast("⏳ Waiting 4s for NetMirror animation to load...")
+        showToast("Waiting 4s for NetMirror animation to load...")
         handler.postDelayed({
             isSearching = true
             attemptAutoFillWithRetries(otp, attemptsLeft = 25)
@@ -262,8 +262,8 @@ class NetMirrorAutoFillService : AccessibilityService() {
                 Log.d(TAG, "Target node found at ($clickX, $clickY)! Showing highlight and clicking...")
 
                 // 1. Show Visual Highlight on Screen & Toast Message
-                showClickHighlight(clickX, clickY, "🎯 Clicked OTP Box ($otp)")
-                showToast("🎯 Clicked OTP Box at (${clickX.toInt()}, ${clickY.toInt()})")
+                showClickHighlight(clickX, clickY, "Clicked OTP Box ($otp)")
+                showToast("Clicked OTP Box at (" + clickX.toInt() + ", " + clickY.toInt() + ")")
 
                 // 2. Perform Accessibility Actions
                 targetNode.performAction(AccessibilityNodeInfo.ACTION_CLICK)
@@ -291,7 +291,7 @@ class NetMirrorAutoFillService : AccessibilityService() {
                     AutoFillManager.lastFilledOtp = otp
                     isSearching = false
 
-                    showToast("✅ OTP ($otp) Entered Successfully!")
+                    showToast("OTP ($otp) Entered Successfully!")
                 }, 400)
                 return
             } else if (attemptsLeft == 12) {
@@ -301,8 +301,8 @@ class NetMirrorAutoFillService : AccessibilityService() {
                 val clickY = dm.heightPixels * 0.44f
 
                 Log.d(TAG, "Smart fallback click triggered at ($clickX, $clickY)")
-                showClickHighlight(clickX, clickY, "🎯 Clicked OTP Box ($otp)")
-                showToast("🎯 Auto-Clicking OTP Box at (${clickX.toInt()}, ${clickY.toInt()})")
+                showClickHighlight(clickX, clickY, "Clicked OTP Box ($otp)")
+                showToast("Auto-Clicking OTP Box at (" + clickX.toInt() + ", " + clickY.toInt() + ")")
                 dispatchTapAt(clickX, clickY)
 
                 handler.postDelayed({
@@ -316,7 +316,7 @@ class NetMirrorAutoFillService : AccessibilityService() {
                     AutoFillManager.autoFillCompleted = true
                     AutoFillManager.lastFilledOtp = otp
                     isSearching = false
-                    showToast("✅ OTP ($otp) Entered Successfully!")
+                    showToast("OTP ($otp) Entered Successfully!")
                 }, 400)
                 return
             }
