@@ -21,14 +21,13 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Download Official Gradle Wrapper JAR
+    - name: Generate Official Gradle Wrapper
       run: |
-        mkdir -p gradle/wrapper
-        curl -sLo gradle/wrapper/gradle-wrapper.jar https://raw.githubusercontent.com/gradle/gradle/v8.5.0/gradle/wrapper/gradle-wrapper.jar
+        gradle wrapper --gradle-version 8.5
         chmod +x ./gradlew
 
     - name: Build Debug APK
-      run: ./gradlew assembleDebug --no-daemon
+      run: ./gradlew assembleDebug --no-daemon --stacktrace
 
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
