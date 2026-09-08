@@ -78,10 +78,10 @@ class MainActivity : AppCompatActivity() {
     private fun checkAccessibilityStatus() {
         if (!AutoFillManager.isAccessibilityServiceEnabled(this)) {
             binding.tvAutoFillHint.text = "⚠️ Auto-Click is OFF. Tap here to enable in Accessibility Settings."
-            binding.tvAutoFillHint.setTextColor(getColor(R.color.accent_cyan))
+            binding.tvAutoFillHint.setTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.accent_cyan))
         } else {
             binding.tvAutoFillHint.text = "✅ Auto-Clicking, Highlights & Auto-Typing is active."
-            binding.tvAutoFillHint.setTextColor(getColor(R.color.accent_green))
+            binding.tvAutoFillHint.setTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.accent_green))
         }
     }
 
