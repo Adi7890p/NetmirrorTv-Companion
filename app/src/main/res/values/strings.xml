@@ -12,5 +12,5 @@
     <string name="btn_refresh">Refresh Code</string>
     <string name="copied_toast">OTP copied to clipboard!</string>
     <string name="launch_error_toast">NetMirror TV app not found on this device. Code copied to clipboard!</string>
-    <string name="footer_hint">When NetMirror TV opens, click 'Enter OTP' box and enter this code.</string>
+    <string name="footer_hint">When NetMirror TV opens, click \'Enter OTP\' box and enter this code.</string>
 </resources>
