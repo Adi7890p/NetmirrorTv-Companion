@@ -1,0 +1,15 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="app_name">NetMirror Companion</string>
+    <string name="otp_label">Current OTP Code</string>
+    <string name="otp_placeholder">------</string>
+    <string name="status_loading">Connecting to netmirror.gg/tv...</string>
+    <string name="status_waiting_dom">Waiting for OTP digits to render...</string>
+    <string name="status_ready">OTP ready! You can copy or launch the app.</string>
+    <string name="status_error">Could not detect OTP. Tap refresh to retry.</string>
+    <string name="btn_copy">Copy Code</string>
+    <string name="btn_launch_app">Open NetMirror TV App</string>
+    <string name="btn_refresh">Refresh Page</string>
+    <string name="copied_toast">OTP copied to clipboard!</string>
+    <string name="launch_error_toast">NetMirror app is not installed on this device.</string>
+    <string name="title_webview">Web View (Cloudflare / Live Page)</string>
+</resources>
