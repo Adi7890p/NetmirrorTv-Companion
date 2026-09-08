@@ -92,7 +92,7 @@
                 android:orientation="horizontal"
                 android:weightSum="2">
 
-                <Button
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnCopy"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="0dp"
@@ -104,7 +104,7 @@
                     android:textColor="@color/text_primary"
                     app:strokeColor="@color/border_color" />
 
-                <Button
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnRefresh"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="0dp"
@@ -117,7 +117,7 @@
             </LinearLayout>
 
             <!-- Launch Main App Button -->
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnLaunchMainApp"
                 style="@style/Widget.MaterialComponents.Button"
                 android:layout_width="match_parent"
