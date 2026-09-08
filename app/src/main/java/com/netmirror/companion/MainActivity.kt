@@ -34,7 +34,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "NetMirrorCompanion"
         private const val OTP_TARGET_URL = "https://netmirror.gg/tv"
-        private const val COUNTDOWN_DURATION_MS = 5000L
+        private const val COUNTDOWN_DURATION_MS = 4000L
         private const val COUNTDOWN_INTERVAL_MS = 50L
 
         // Candidate package identifiers for NetMirror TV
@@ -44,9 +44,9 @@ class MainActivity : AppCompatActivity() {
             "com.netmirror.tvos",
             "com.netmirror",
             "com.netmirror.app",
+            "com.netmirror.android",
             "tv.netmirror",
-            "org.netmirror",
-            "com.netmirror.android"
+            "org.netmirror"
         )
 
         // Deep links supported
@@ -95,7 +95,7 @@ class MainActivity : AppCompatActivity() {
             if (isPaused) {
                 isPaused = false
                 binding.btnPause.text = "Cancel"
-                start5SecondCountdown()
+                startCountdown()
             } else {
                 isPaused = true
                 countDownTimer?.cancel()
@@ -266,32 +266,32 @@ class MainActivity : AppCompatActivity() {
         binding.tvOtpCode.text = otp.chunked(1).joinToString(" ")
         binding.tvStatus.text = getString(R.string.status_ready)
 
-        // Show floating countdown overlay with smooth fade-in
+        // Show floating card overlay with animation
         binding.cardOtpOverlay.visibility = View.VISIBLE
         binding.cardOtpOverlay.alpha = 0f
         binding.cardOtpOverlay.animate().alpha(1f).setDuration(300).start()
 
-        // Copy to clipboard immediately
+        // Copy to clipboard immediately so it is ready
         copyOtpToClipboard(otp)
 
-        // Start the 5-second countdown timer animation
-        start5SecondCountdown()
+        // Start countdown to auto-open NetMirror TV
+        startCountdown()
     }
 
-    private fun start5SecondCountdown() {
+    private fun startCountdown() {
         countDownTimer?.cancel()
         binding.pbCountdown.max = COUNTDOWN_DURATION_MS.toInt()
 
         countDownTimer = object : CountDownTimer(COUNTDOWN_DURATION_MS, COUNTDOWN_INTERVAL_MS) {
             override fun onTick(millisUntilFinished: Long) {
                 val secondsLeft = ((millisUntilFinished + 999) / 1000).toInt()
-                binding.tvCountdown.text = "Launching NetMirror TV in ${secondsLeft}s..."
+                binding.tvCountdown.text = "Opening NetMirror TV in ${secondsLeft}s..."
                 binding.pbCountdown.progress = millisUntilFinished.toInt()
             }
 
             override fun onFinish() {
                 binding.pbCountdown.progress = 0
-                binding.tvCountdown.text = "Launching NetMirror TV now..."
+                binding.tvCountdown.text = "Opening NetMirror TV..."
                 currentOtp?.let { otp ->
                     launchMainAppWithOtp(otp)
                 }
@@ -310,7 +310,87 @@ class MainActivity : AppCompatActivity() {
 
     private fun launchMainAppWithOtp(otp: String) {
         try {
-            // 1. Try deep links
+            // 1. Try known package names directly
+            for (pkg in KNOWN_PACKAGES) {
+                val launchIntent = packageManager.getLaunchIntentForPackage(pkg)
+                if (launchIntent != null) {
+                    launchIntent.putExtra("otp_code", otp)
+                    launchIntent.putExtra("otp", otp)
+                    launchIntent.putExtra("code", otp)
+                    launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    startActivity(launchIntent)
+                    Toast.makeText(
+                        this,
+                        "OTP ($otp) copied! Tap 'Enter OTP' box to paste after startup.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return
+                }
+            }
+
+            // 2. Query standard launcher apps
+            val launcherIntent = Intent(Intent.ACTION_MAIN, null).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+            }
+            val apps = packageManager.queryIntentActivities(launcherIntent, 0)
+            for (resolveInfo in apps) {
+                val pkgName = resolveInfo.activityInfo.packageName
+                if (pkgName == packageName) continue
+
+                val appLabel = resolveInfo.loadLabel(packageManager).toString()
+                if (pkgName.contains("netmirror", ignoreCase = true) ||
+                    pkgName.contains("netmirrortv", ignoreCase = true) ||
+                    appLabel.contains("netmirror", ignoreCase = true) ||
+                    appLabel.contains("netmirrortv", ignoreCase = true)
+                ) {
+                    val intent = packageManager.getLaunchIntentForPackage(pkgName) ?: Intent().apply {
+                        setClassName(pkgName, resolveInfo.activityInfo.name)
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    intent.putExtra("otp_code", otp)
+                    intent.putExtra("otp", otp)
+                    intent.putExtra("code", otp)
+                    startActivity(intent)
+                    Toast.makeText(
+                        this,
+                        "OTP ($otp) copied! Tap 'Enter OTP' box to paste after startup.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return
+                }
+            }
+
+            // 3. Query Leanback TV launcher apps
+            val tvIntent = Intent(Intent.ACTION_MAIN, null).apply {
+                addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER)
+            }
+            val tvApps = packageManager.queryIntentActivities(tvIntent, 0)
+            for (resolveInfo in tvApps) {
+                val pkgName = resolveInfo.activityInfo.packageName
+                if (pkgName == packageName) continue
+
+                val appLabel = resolveInfo.loadLabel(packageManager).toString()
+                if (pkgName.contains("netmirror", ignoreCase = true) ||
+                    appLabel.contains("netmirror", ignoreCase = true)
+                ) {
+                    val intent = packageManager.getLaunchIntentForPackage(pkgName) ?: Intent().apply {
+                        setClassName(pkgName, resolveInfo.activityInfo.name)
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    intent.putExtra("otp_code", otp)
+                    intent.putExtra("otp", otp)
+                    intent.putExtra("code", otp)
+                    startActivity(intent)
+                    Toast.makeText(
+                        this,
+                        "OTP ($otp) copied! Tap 'Enter OTP' box to paste after startup.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return
+                }
+            }
+
+            // 4. Try deep links
             for (scheme in DEEP_LINK_SCHEMES) {
                 try {
                     val uri = Uri.parse("$scheme$otp")
@@ -327,22 +407,12 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            // 2. Try known package names
-            for (pkg in KNOWN_PACKAGES) {
-                val launchIntent = packageManager.getLaunchIntentForPackage(pkg)
-                if (launchIntent != null) {
-                    launchIntent.putExtra("otp_code", otp)
-                    launchIntent.putExtra("otp", otp)
-                    launchIntent.putExtra("code", otp)
-                    launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    startActivity(launchIntent)
-                    Toast.makeText(this, "Opening NetMirror TV ($pkg)...", Toast.LENGTH_SHORT).show()
-                    return
-                }
-            }
-
-            // 3. Fallback if app is not installed
-            Toast.makeText(this, getString(R.string.launch_error_toast), Toast.LENGTH_LONG).show()
+            // Fallback if app is not found
+            Toast.makeText(
+                this,
+                "NetMirror TV app not found on this device. Code '$otp' copied to clipboard!",
+                Toast.LENGTH_LONG
+            ).show()
 
         } catch (e: Exception) {
             Toast.makeText(this, "Error opening app: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
@@ -357,6 +427,26 @@ class MainActivity : AppCompatActivity() {
                     launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     startActivity(launchIntent)
                     Toast.makeText(this, "Opening NetMirror TV...", Toast.LENGTH_SHORT).show()
+                    return
+                }
+            }
+
+            val launcherIntent = Intent(Intent.ACTION_MAIN, null).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+            }
+            val apps = packageManager.queryIntentActivities(launcherIntent, 0)
+            for (resolveInfo in apps) {
+                val pkgName = resolveInfo.activityInfo.packageName
+                if (pkgName == packageName) continue
+
+                val appLabel = resolveInfo.loadLabel(packageManager).toString()
+                if (pkgName.contains("netmirror", ignoreCase = true) || appLabel.contains("netmirror", ignoreCase = true)) {
+                    val intent = packageManager.getLaunchIntentForPackage(pkgName) ?: Intent().apply {
+                        setClassName(pkgName, resolveInfo.activityInfo.name)
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    startActivity(intent)
+                    Toast.makeText(this, "Opening $appLabel...", Toast.LENGTH_SHORT).show()
                     return
                 }
             }

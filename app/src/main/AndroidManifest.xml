@@ -14,14 +14,25 @@
         android:name="android.software.leanback"
         android:required="false" />
 
-    <!-- Standard Compliant Queries for launching main app via deep link or package name -->
+    <!-- Standard Compliant Queries for finding installed launcher apps & packages -->
     <queries>
+        <!-- Standard query to discover launcher apps on Android 11+ without Play Protect flags -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+        </intent>
         <package android:name="com.netmirrortv" />
         <package android:name="com.netmirror.tv" />
         <package android:name="com.netmirror.tvos" />
         <package android:name="com.netmirror" />
         <package android:name="com.netmirror.app" />
+        <package android:name="com.netmirror.android" />
         <package android:name="tv.netmirror" />
+        <package android:name="org.netmirror" />
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="netmirror" />
