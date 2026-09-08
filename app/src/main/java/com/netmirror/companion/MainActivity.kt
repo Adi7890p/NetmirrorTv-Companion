@@ -17,7 +17,6 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.netmirror.companion.databinding.ActivityMainBinding
 
@@ -66,7 +65,6 @@ class MainActivity : AppCompatActivity() {
         binding.btnCopy.setOnClickListener {
             currentOtp?.let { otp ->
                 copyOtpToClipboard(otp)
-                Toast.makeText(this, "OTP ($otp) copied to clipboard!", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -254,7 +252,6 @@ class MainActivity : AppCompatActivity() {
 
         // Copy to clipboard immediately
         copyOtpToClipboard(otp)
-        Toast.makeText(this, "OTP ($otp) detected & copied to clipboard!", Toast.LENGTH_SHORT).show()
     }
 
     private fun resetOtpState() {
@@ -276,7 +273,6 @@ class MainActivity : AppCompatActivity() {
                     launchIntent.putExtra("code", otp)
                     launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     startActivity(launchIntent)
-                    Toast.makeText(this, "Opening NetMirror TV...", Toast.LENGTH_SHORT).show()
                     return
                 }
             }
@@ -304,7 +300,6 @@ class MainActivity : AppCompatActivity() {
                     intent.putExtra("otp", otp)
                     intent.putExtra("code", otp)
                     startActivity(intent)
-                    Toast.makeText(this, "Opening $appLabel...", Toast.LENGTH_SHORT).show()
                     return
                 }
             }
@@ -330,7 +325,6 @@ class MainActivity : AppCompatActivity() {
                     intent.putExtra("otp", otp)
                     intent.putExtra("code", otp)
                     startActivity(intent)
-                    Toast.makeText(this, "Opening $appLabel...", Toast.LENGTH_SHORT).show()
                     return
                 }
             }
@@ -344,7 +338,6 @@ class MainActivity : AppCompatActivity() {
                     }
                     if (deepIntent.resolveActivity(packageManager) != null) {
                         startActivity(deepIntent)
-                        Toast.makeText(this, "Opening NetMirror TV...", Toast.LENGTH_SHORT).show()
                         return
                     }
                 } catch (e: Exception) {
@@ -352,15 +345,8 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            // Fallback if app is not found
-            Toast.makeText(
-                this,
-                "NetMirror TV app not found on this device. Code '$otp' copied to clipboard!",
-                Toast.LENGTH_LONG
-            ).show()
-
         } catch (e: Exception) {
-            Toast.makeText(this, "Error opening app: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+            Log.e(TAG, "Error opening app: ${e.localizedMessage}", e)
         }
     }
 
@@ -371,7 +357,6 @@ class MainActivity : AppCompatActivity() {
                 if (launchIntent != null) {
                     launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     startActivity(launchIntent)
-                    Toast.makeText(this, "Opening NetMirror TV...", Toast.LENGTH_SHORT).show()
                     return
                 }
             }
@@ -391,14 +376,11 @@ class MainActivity : AppCompatActivity() {
                         flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     }
                     startActivity(intent)
-                    Toast.makeText(this, "Opening $appLabel...", Toast.LENGTH_SHORT).show()
                     return
                 }
             }
-
-            Toast.makeText(this, "NetMirror TV app not found on this device.", Toast.LENGTH_LONG).show()
         } catch (e: Exception) {
-            Toast.makeText(this, "Error: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+            Log.e(TAG, "Error launching app: ${e.localizedMessage}", e)
         }
     }
 
