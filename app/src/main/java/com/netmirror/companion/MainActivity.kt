@@ -12,6 +12,7 @@ import android.os.Bundle
 import android.os.CountDownTimer
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.util.Log
 import android.view.View
 import android.webkit.WebResourceError
@@ -66,6 +67,17 @@ class MainActivity : AppCompatActivity() {
         setupListeners()
         setupWebView()
         loadOtpPage()
+        checkAccessibilityStatus()
+    }
+
+    private fun checkAccessibilityStatus() {
+        if (!AutoFillManager.isAccessibilityServiceEnabled(this)) {
+            binding.tvAutoFillHint.text = "⚠️ Auto-Typing is OFF. Tap here to enable in Accessibility Settings."
+            binding.tvAutoFillHint.setTextColor(getColor(R.color.accent_cyan))
+        } else {
+            binding.tvAutoFillHint.text = "✅ Auto-Clicking & Auto-Typing is active."
+            binding.tvAutoFillHint.setTextColor(getColor(R.color.accent_green))
+        }
     }
 
     private fun setupListeners() {
@@ -101,6 +113,16 @@ class MainActivity : AppCompatActivity() {
                 countDownTimer?.cancel()
                 binding.btnPause.text = "Resume"
                 binding.tvCountdown.text = "Auto-launch paused"
+            }
+        }
+
+        binding.tvAutoFillHint.setOnClickListener {
+            try {
+                val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                startActivity(intent)
+                Toast.makeText(this, "Find 'NetMirror Companion' and turn it ON to auto-click and auto-type OTP!", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Log.e(TAG, "Cannot open accessibility settings", e)
             }
         }
     }
@@ -262,6 +284,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun onOtpSuccessfullyExtracted(otp: String) {
         currentOtp = otp
+        AutoFillManager.activeOtp = otp
+        AutoFillManager.autoFillCompleted = false
+
         binding.progressBar.visibility = View.GONE
         binding.tvOtpCode.text = otp.chunked(1).joinToString(" ")
         binding.tvStatus.text = getString(R.string.status_ready)
@@ -302,6 +327,8 @@ class MainActivity : AppCompatActivity() {
     private fun resetOtpState() {
         countDownTimer?.cancel()
         currentOtp = null
+        AutoFillManager.activeOtp = null
+        AutoFillManager.autoFillCompleted = false
         binding.cardOtpOverlay.visibility = View.GONE
         binding.tvOtpCode.text = getString(R.string.otp_placeholder)
         binding.tvStatus.text = getString(R.string.status_loading)
@@ -310,6 +337,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun launchMainAppWithOtp(otp: String) {
         try {
+            AutoFillManager.activeOtp = otp
+            AutoFillManager.autoFillCompleted = false
+
             // 1. Try known package names directly
             for (pkg in KNOWN_PACKAGES) {
                 val launchIntent = packageManager.getLaunchIntentForPackage(pkg)
@@ -321,8 +351,8 @@ class MainActivity : AppCompatActivity() {
                     startActivity(launchIntent)
                     Toast.makeText(
                         this,
-                        "OTP ($otp) copied! Tap 'Enter OTP' box to paste after startup.",
-                        Toast.LENGTH_LONG
+                        "Opening NetMirror TV...",
+                        Toast.LENGTH_SHORT
                     ).show()
                     return
                 }
@@ -353,8 +383,8 @@ class MainActivity : AppCompatActivity() {
                     startActivity(intent)
                     Toast.makeText(
                         this,
-                        "OTP ($otp) copied! Tap 'Enter OTP' box to paste after startup.",
-                        Toast.LENGTH_LONG
+                        "Opening $appLabel...",
+                        Toast.LENGTH_SHORT
                     ).show()
                     return
                 }
@@ -383,8 +413,8 @@ class MainActivity : AppCompatActivity() {
                     startActivity(intent)
                     Toast.makeText(
                         this,
-                        "OTP ($otp) copied! Tap 'Enter OTP' box to paste after startup.",
-                        Toast.LENGTH_LONG
+                        "Opening $appLabel...",
+                        Toast.LENGTH_SHORT
                     ).show()
                     return
                 }
@@ -455,6 +485,11 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Toast.makeText(this, "Error: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        checkAccessibilityStatus()
     }
 
     override fun onDestroy() {
