@@ -18,6 +18,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.netmirror.companion.R
 import com.netmirror.companion.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
@@ -25,7 +26,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private var currentOtp: String? = null
     private val mainHandler = Handler(Looper.getMainLooper())
-    private var isScrapingActive = false
 
     companion object {
         private const val OTP_TARGET_URL = "https://netmirror.gg/tv"
@@ -75,7 +75,7 @@ class MainActivity : AppCompatActivity() {
         settings.useWideViewPort = true
         settings.loadWithOverviewMode = true
         
-        // Use standard modern Android User-Agent to ensure Cloudflare / bot checks pass cleanly
+        // Standard Android Chrome User-Agent to pass Cloudflare checks cleanly
         settings.userAgentString = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
 
         // Register Native Android <-> JS Bridge
@@ -118,9 +118,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun injectOtpExtractionScript() {
-        isScrapingActive = true
-        
-        // Pure JavaScript injected to query `div.digit` elements and monitor dynamic DOM updates
         val script = """
             (function() {
                 function checkAndExtractDigits() {
@@ -144,9 +141,7 @@ class MainActivity : AppCompatActivity() {
                     return false;
                 }
 
-                // 1. Initial immediate check
                 if (!checkAndExtractDigits()) {
-                    // 2. Observer for dynamic single-page React/Vue DOM mutations
                     var observer = new MutationObserver(function(mutations, obs) {
                         if (checkAndExtractDigits()) {
                             obs.disconnect();
@@ -158,7 +153,6 @@ class MainActivity : AppCompatActivity() {
                         characterData: true
                     });
 
-                    // 3. Interval polling fallback for 20 seconds
                     var pollCount = 0;
                     var intervalId = setInterval(function() {
                         pollCount++;
@@ -191,14 +185,8 @@ class MainActivity : AppCompatActivity() {
         binding.btnLaunchMainApp.isEnabled = false
     }
 
-    /**
-     * Dispatches OTP to the main React Native application via:
-     * 1. Deep Link Intent (`netmirror://otp?code=123456`)
-     * 2. Package Launch Intent fallback with Intent Extras
-     */
     private fun launchMainAppWithOtp(otp: String) {
         try {
-            // Strategy 1: Direct Deep Link Scheme
             val deepLinkUri = Uri.parse("$MAIN_APP_SCHEME_URI$otp")
             val deepLinkIntent = Intent(Intent.ACTION_VIEW, deepLinkUri).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -209,7 +197,6 @@ class MainActivity : AppCompatActivity() {
                 return
             }
 
-            // Strategy 2: Explicit Package Launch with Extra
             val launchIntent = packageManager.getLaunchIntentForPackage(MAIN_APP_PACKAGE_NAME)
             if (launchIntent != null) {
                 launchIntent.putExtra("otp_code", otp)
@@ -219,7 +206,6 @@ class MainActivity : AppCompatActivity() {
                 return
             }
 
-            // Strategy 3: Check generic package 'com.netmirror'
             val fallbackIntent = packageManager.getLaunchIntentForPackage("com.netmirror")
             if (fallbackIntent != null) {
                 fallbackIntent.putExtra("otp_code", otp)
@@ -228,7 +214,6 @@ class MainActivity : AppCompatActivity() {
                 return
             }
 
-            // Main app not installed fallback
             Toast.makeText(this, getString(R.string.launch_error_toast), Toast.LENGTH_LONG).show()
 
         } catch (e: Exception) {
